@@ -93,3 +93,11 @@ class FileEditor(QPlainTextEdit):
             with open(file_path, 'w', encoding='utf-8') as file:
                 file.write(self.toPlainText())
             self.current_file = file_path
+
+    def zoom_in(self):
+        """テキストを拡大する"""
+        self.zoomIn()
+
+    def zoom_out(self):
+        """テキストを縮小する"""
+        self.zoomOut()
