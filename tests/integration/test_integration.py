@@ -40,12 +40,14 @@ def test_open_file_in_main_window(main_window, mocker):
     mocker.patch('PySide6.QtWidgets.QFileDialog.getOpenFileName', return_value=("test.txt", ""))
     mocker.patch('my_package.editor.FileEditor.open_file')
     main_window.open_file()
-    assert main_window.tab_manager.count() == 2  # デフォルトタブ + 新しいタブ
+    assert main_window.tab_manager.count() == 1  # 新しいタブのみ
 
 def test_save_file_in_main_window(main_window, mocker):
     """MainWindowでファイルを保存するテスト"""
+    mocker.patch('PySide6.QtWidgets.QFileDialog.getSaveFileName', return_value=("test_save.txt", ""))
     mocker.patch('my_package.editor.FileEditor.save_file')
+    main_window.new_file()
     main_window.save_file()
     current_widget = main_window.tab_manager.currentWidget()
     if isinstance(current_widget, FileEditor):
-        current_widget.save_file.assert_called_once()
+        current_widget.save_file.assert_called_once_with("test_save.txt")
