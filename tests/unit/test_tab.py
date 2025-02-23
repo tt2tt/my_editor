@@ -1,6 +1,7 @@
 import pytest
 from PySide6.QtWidgets import QApplication
 from my_package.tab import TabManager
+from my_package.editor import FileEditor
 
 @pytest.fixture(scope="session")
 def app():
@@ -20,13 +21,13 @@ def tab_manager(app):
 def test_add_new_tab(tab_manager):
     """新しいタブを追加するテスト"""
     initial_count = tab_manager.count()
-    tab_manager.add_new_tab("テストタブ")
+    tab_manager.add_new_tab("テストタブ", FileEditor())
     assert tab_manager.count() == initial_count + 1
     assert tab_manager.tabText(initial_count) == "テストタブ"
 
 def test_remove_tab(tab_manager):
     """タブを削除するテスト"""
-    tab_manager.add_new_tab("削除タブ")
+    tab_manager.add_new_tab("削除タブ", FileEditor())
     initial_count = tab_manager.count()
     tab_manager.remove_tab(initial_count - 1)
     assert tab_manager.count() == initial_count - 1

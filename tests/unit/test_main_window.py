@@ -1,12 +1,13 @@
 import pytest
 from PySide6.QtWidgets import QApplication, QMenu
 from main_window import MainWindow
+from my_package.editor import FileEditor
 
 @pytest.fixture(scope="session")
 def app():
     """QApplicationのインスタンスを作成するフィクスチャ"""
     app = QApplication.instance()
-    if app is None:
+    if (app is None):
         app = QApplication([])
     yield app
     app.quit()
@@ -56,3 +57,18 @@ def test_file_menu_actions(main_window):
     assert "&開く" in actions
     assert "&保存" in actions
     assert "&終了" in actions
+
+def test_open_file_action(main_window, mocker):
+    """ファイルを開くアクションのテスト"""
+    mocker.patch('PySide6.QtWidgets.QFileDialog.getOpenFileName', return_value=("test.txt", ""))
+    mocker.patch('my_package.editor.FileEditor.open_file')
+    main_window.open_file()
+    assert main_window.tab_manager.count() == 2
+
+def test_save_file_action(main_window, mocker):
+    """ファイルを保存するアクションのテスト"""
+    mocker.patch('my_package.editor.FileEditor.save_file')
+    main_window.save_file()
+    current_widget = main_window.tab_manager.currentWidget()
+    if isinstance(current_widget, FileEditor):
+        current_widget.save_file.assert_called_once()
