@@ -5,6 +5,7 @@ from PySide6.QtGui import QAction
 
 class MainWindow(QMainWindow):
     def __init__(self):
+        """MainWindowの初期化"""
         super().__init__()
         self.setWindowTitle("マイエディタ")
         self.setGeometry(100, 100, 800, 600)
@@ -12,11 +13,13 @@ class MainWindow(QMainWindow):
         self.create_menu_bar()
 
     def apply_styles(self):
+        """スタイルシートを適用する"""
         style_path = os.path.join(os.path.dirname(__file__), 'QSS', 'style.qss')
         with open(style_path, 'r') as style_file:
             self.setStyleSheet(style_file.read())
 
     def create_menu_bar(self):
+        """メニューバーを作成する"""
         menu_bar = self.menuBar()
 
         file_menu = QMenu("&ファイル", self)
