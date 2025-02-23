@@ -30,7 +30,7 @@ def test_open_file(file_editor, tmp_path):
 def test_save_file(file_editor, tmp_path):
     """ファイルを保存するテスト"""
     test_file = tmp_path / "test.txt"
-    file_editor.setText("Hello, world!")
+    file_editor.setPlainText("Hello, world!")
     file_editor.save_file(str(test_file))
 
     assert test_file.read_text(encoding='utf-8') == "Hello, world!"

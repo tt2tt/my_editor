@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QApplication
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 from main_window import MainWindow
 from my_package.editor import FileEditor
+from my_package.line_number_area import LineNumberArea
 
 @pytest.fixture(scope="session")
 def app():
@@ -40,7 +41,7 @@ def test_open_file_in_main_window(main_window, mocker):
     mocker.patch('PySide6.QtWidgets.QFileDialog.getOpenFileName', return_value=("test.txt", ""))
     mocker.patch('my_package.editor.FileEditor.open_file')
     main_window.open_file()
-    assert main_window.tab_manager.count() == 1  # 新しいタブのみ
+    assert main_window.tab_manager.count() == 1
 
 def test_save_file_in_main_window(main_window, mocker):
     """MainWindowでファイルを保存するテスト"""
