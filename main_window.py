@@ -1,7 +1,8 @@
 import sys
 import os
-from PySide6.QtWidgets import QApplication, QMainWindow, QMenuBar, QMenu
+from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QVBoxLayout, QWidget
 from PySide6.QtGui import QAction
+from my_package.tab import TabManager
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -11,6 +12,7 @@ class MainWindow(QMainWindow):
         self.setGeometry(100, 100, 800, 600)
         self.apply_styles()
         self.create_menu_bar()
+        self.create_tab_manager()
 
     def apply_styles(self):
         """スタイルシートを適用する"""
@@ -34,6 +36,18 @@ class MainWindow(QMainWindow):
         exit_action = QAction("&終了", self)
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
+
+    def create_tab_manager(self):
+        """TabManagerを作成して表示する"""
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout(central_widget)
+
+        self.tab_manager = TabManager(self)
+        layout.addWidget(self.tab_manager)
+
+        # デフォルトのタブを追加
+        self.tab_manager.add_new_tab("デフォルトタブ")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
