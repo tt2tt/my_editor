@@ -54,7 +54,8 @@ def test_file_menu_actions(main_window):
             break
     assert file_menu is not None
     actions = [action.text() for action in file_menu.actions()]
-    assert "&開く" in actions
+    assert "&新しいファイル" in actions
+    assert "&ファイルを開く" in actions
     assert "&保存" in actions
     assert "&終了" in actions
 
@@ -63,12 +64,19 @@ def test_open_file_action(main_window, mocker):
     mocker.patch('PySide6.QtWidgets.QFileDialog.getOpenFileName', return_value=("test.txt", ""))
     mocker.patch('my_package.editor.FileEditor.open_file')
     main_window.open_file()
-    assert main_window.tab_manager.count() == 2
+    assert main_window.tab_manager.count() == 1
+
+def test_new_file_action(main_window):
+    """新しいファイルを作成するアクションのテスト"""
+    main_window.new_file()
+    assert main_window.tab_manager.count() == 1
 
 def test_save_file_action(main_window, mocker):
     """ファイルを保存するアクションのテスト"""
+    mocker.patch('PySide6.QtWidgets.QFileDialog.getSaveFileName', return_value=("test_save.txt", ""))
     mocker.patch('my_package.editor.FileEditor.save_file')
+    main_window.new_file()
     main_window.save_file()
     current_widget = main_window.tab_manager.currentWidget()
     if isinstance(current_widget, FileEditor):
-        current_widget.save_file.assert_called_once()
+        current_widget.save_file.assert_called_once_with("test_save.txt")

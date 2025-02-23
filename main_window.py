@@ -28,7 +28,11 @@ class MainWindow(QMainWindow):
         file_menu = QMenu("&ファイル", self)
         menu_bar.addMenu(file_menu)
 
-        open_action = QAction("&開く", self)
+        new_action = QAction("&新しいファイル", self)
+        new_action.triggered.connect(self.new_file)
+        file_menu.addAction(new_action)
+
+        open_action = QAction("&ファイルを開く", self)
         open_action.triggered.connect(self.open_file)
         file_menu.addAction(open_action)
 
@@ -50,11 +54,22 @@ class MainWindow(QMainWindow):
             self.tab_manager.add_new_tab(file_name, editor)
             self.tab_manager.setCurrentWidget(editor)
 
+    def new_file(self):
+        """新しいファイルを作成する"""
+        editor = FileEditor()
+        self.tab_manager.add_new_tab("新しいファイル", editor)
+        self.tab_manager.setCurrentWidget(editor)
+
     def save_file(self):
         """ファイルを保存する"""
         current_widget = self.tab_manager.currentWidget()
         if isinstance(current_widget, FileEditor):
-            current_widget.save_file()
+            if current_widget.current_file is None:
+                file_path, _ = QFileDialog.getSaveFileName(self, "ファイルを保存", "", "All Files (*);;Text Files (*.txt)")
+                if file_path:
+                    current_widget.save_file(file_path)
+            else:
+                current_widget.save_file()
 
     def create_tab_manager(self):
         """TabManagerを作成して表示する"""
@@ -64,9 +79,6 @@ class MainWindow(QMainWindow):
 
         self.tab_manager = TabManager(self)
         layout.addWidget(self.tab_manager)
-
-        # デフォルトのタブを追加
-        self.tab_manager.add_new_tab("デフォルトタブ", FileEditor())
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
