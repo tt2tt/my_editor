@@ -1,8 +1,9 @@
 import sys
 import os
-from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QVBoxLayout, QWidget, QFileDialog
 from PySide6.QtGui import QAction
 from my_package.tab import TabManager
+from my_package.editor import FileEditor
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -28,6 +29,7 @@ class MainWindow(QMainWindow):
         menu_bar.addMenu(file_menu)
 
         open_action = QAction("&開く", self)
+        open_action.triggered.connect(self.open_file)
         file_menu.addAction(open_action)
 
         save_action = QAction("&保存", self)
@@ -36,6 +38,16 @@ class MainWindow(QMainWindow):
         exit_action = QAction("&終了", self)
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
+
+    def open_file(self):
+        """ファイルを開く"""
+        file_path, _ = QFileDialog.getOpenFileName(self, "ファイルを開く", "", "All Files (*);;Text Files (*.txt)")
+        if file_path:
+            editor = FileEditor()
+            editor.open_file(file_path)
+            file_name = os.path.basename(file_path)
+            self.tab_manager.add_new_tab(file_name, editor)
+            self.tab_manager.setCurrentWidget(editor)
 
     def create_tab_manager(self):
         """TabManagerを作成して表示する"""
@@ -47,7 +59,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.tab_manager)
 
         # デフォルトのタブを追加
-        self.tab_manager.add_new_tab("デフォルトタブ")
+        self.tab_manager.add_new_tab("デフォルトタブ", FileEditor())
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

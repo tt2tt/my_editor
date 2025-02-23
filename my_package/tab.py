@@ -7,14 +7,15 @@ class TabManager(QTabWidget):
         self.setTabsClosable(True)
         self.tabCloseRequested.connect(self.remove_tab)
 
-    def add_new_tab(self, title="新しいタブ"):
+    def add_new_tab(self, title="新しいタブ", widget=None):
         """新しいタブを追加する"""
-        new_tab = QWidget()
-        layout = QVBoxLayout()
-        label = QLabel("コンテンツ")
-        layout.addWidget(label)
-        new_tab.setLayout(layout)
-        self.addTab(new_tab, title)
+        if widget is None:
+            widget = QWidget()
+            layout = QVBoxLayout()
+            label = QLabel("コンテンツ")
+            layout.addWidget(label)
+            widget.setLayout(layout)
+        self.addTab(widget, title)
 
     def remove_tab(self, index):
         """指定されたインデックスのタブを削除する"""
