@@ -33,6 +33,7 @@ class MainWindow(QMainWindow):
         file_menu.addAction(open_action)
 
         save_action = QAction("&保存", self)
+        save_action.triggered.connect(self.save_file)
         file_menu.addAction(save_action)
 
         exit_action = QAction("&終了", self)
@@ -48,6 +49,12 @@ class MainWindow(QMainWindow):
             file_name = os.path.basename(file_path)
             self.tab_manager.add_new_tab(file_name, editor)
             self.tab_manager.setCurrentWidget(editor)
+
+    def save_file(self):
+        """ファイルを保存する"""
+        current_widget = self.tab_manager.currentWidget()
+        if isinstance(current_widget, FileEditor):
+            current_widget.save_file()
 
     def create_tab_manager(self):
         """TabManagerを作成して表示する"""
