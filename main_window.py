@@ -2,6 +2,7 @@ import sys
 import os
 from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QVBoxLayout, QWidget, QFileDialog
 from PySide6.QtGui import QAction
+from PySide6.QtCore import Qt
 from my_package.tab import TabManager
 from my_package.editor import FileEditor
 
@@ -79,6 +80,26 @@ class MainWindow(QMainWindow):
 
         self.tab_manager = TabManager(self)
         layout.addWidget(self.tab_manager)
+
+    def wheelEvent(self, event):
+        """ホイールイベントを処理して拡大・縮小を行う"""
+        if event.modifiers() == Qt.ControlModifier:
+            if event.angleDelta().y() > 0:
+                self.zoom_in()
+            else:
+                self.zoom_out()
+
+    def zoom_in(self):
+        """拡大する"""
+        current_widget = self.tab_manager.currentWidget()
+        if isinstance(current_widget, FileEditor):
+            current_widget.zoom_in()
+
+    def zoom_out(self):
+        """縮小する"""
+        current_widget = self.tab_manager.currentWidget()
+        if isinstance(current_widget, FileEditor):
+            current_widget.zoom_out()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
