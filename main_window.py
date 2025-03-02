@@ -121,6 +121,7 @@ class MainWindow(QMainWindow):
 
     def new_file(self):
         """新しいファイルを作成する"""
+        print(2/0)
         editor = FileEditor()
         self.tab_manager.add_new_tab("新しいファイル", editor)
         self.tab_manager.setCurrentWidget(editor)
@@ -353,7 +354,16 @@ class MainWindow(QMainWindow):
             current_widget.redo()
 
 if __name__ == "__main__":
+    from my_package.sub_package.my_logger import MyLogger
+    logger = MyLogger().get_logger()
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
-    sys.exit(app.exec())
+    logger.info("イベントループ開始")
+    try:
+        exit_code = app.exec()
+    except Exception as e:
+        logger.error("イベントループの途中で例外が発生しました: %s", e)
+    finally:
+        logger.info("イベントループ終了")
+    sys.exit(exit_code)
