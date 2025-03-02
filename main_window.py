@@ -25,6 +25,11 @@ class MainWindow(QMainWindow):
         self.create_tool_bar()
         self.create_shortcuts()
         self.setFocusPolicy(Qt.StrongFocus)  # ショートカットが発生するようフォーカスを明示的に要求
+        
+        # テスト実行時は画面表示を抑制
+        if "PYTEST_CURRENT_TEST" in os.environ:
+            self.setAttribute(Qt.WA_DontShowOnScreen, True)
+        
         # 新規属性：前回の検索パターンと最後のヒット位置
         self.last_search_pattern = ""
         self.last_match_end = 0
