@@ -90,6 +90,10 @@ class MainWindow(QMainWindow):
                 file_path, _ = QFileDialog.getSaveFileName(self, "ファイルを保存", "", "All Files (*);;Text Files (*.txt)")
                 if file_path:
                     current_widget.save_file(file_path)
+                    # 追加: 保存したファイル名でタブ名を更新する
+                    file_name = os.path.basename(file_path)
+                    index = self.tab_manager.indexOf(current_widget)
+                    self.tab_manager.setTabText(index, file_name)
             else:
                 current_widget.save_file()
 
