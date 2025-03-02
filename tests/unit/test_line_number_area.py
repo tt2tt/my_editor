@@ -1,5 +1,6 @@
 import pytest
 from PySide6.QtWidgets import QApplication
+
 from my_package.line_number_area import LineNumberArea
 from my_package.editor import FileEditor
 
