@@ -35,3 +35,17 @@ def test_save_file(file_editor, tmp_path):
 
     assert test_file.read_text(encoding='utf-8') == "Hello, world!"
     assert file_editor.current_file == str(test_file)
+
+def test_zoom_in(file_editor):
+    """テキスト拡大のテスト"""
+    initial_font_size = file_editor.font().pointSize()
+    file_editor.zoom_in()
+    new_font_size = file_editor.font().pointSize()
+    assert new_font_size > initial_font_size
+
+def test_zoom_out(file_editor):
+    """テキスト縮小のテスト"""
+    initial_font_size = file_editor.font().pointSize()
+    file_editor.zoom_out()
+    new_font_size = file_editor.font().pointSize()
+    assert new_font_size < initial_font_size
