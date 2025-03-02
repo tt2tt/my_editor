@@ -1,14 +1,19 @@
-import pytest
-import sys
 import os
-from PySide6.QtWidgets import QApplication
+import sys
+import re
+import pytest
+from PySide6.QtCore import Qt, QPoint
+from PySide6.QtGui import QWheelEvent, QTextCursor
+from PySide6.QtWidgets import QApplication, QSplitter, QTreeView
 from PySide6.QtTest import QTest
-from PySide6.QtGui import QTextCursor
+
+# プロジェクトのルートディレクトリをsys.pathに追加
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 from main_window import MainWindow
 from my_package.editor import FileEditor
 from my_package.line_number_area import LineNumberArea
 
+# --- 既存のfixtureおよびヘルパー関数 ---
 @pytest.fixture(scope="session")
 def app():
     """QApplicationのインスタンスを作成するフィクスチャ"""
@@ -25,6 +30,16 @@ def main_window(app):
     window.show()
     return window
 
+def simulate_wheel_event(widget, delta):
+    """ホイールイベントのシミュレーション"""
+    event = QWheelEvent(widget.rect().center(),
+                        widget.mapToGlobal(widget.rect().center()),
+                        QPoint(0, delta), QPoint(0, delta),
+                        Qt.NoButton, Qt.ControlModifier,
+                        Qt.NoScrollPhase, False)
+    QApplication.sendEvent(widget, event)
+
+# --- 既存の統合テスト ---
 def test_add_tab_in_main_window(main_window):
     """MainWindowでタブを追加するテスト"""
     initial_count = main_window.tab_manager.count()
@@ -56,21 +71,19 @@ def test_save_file_in_main_window(main_window, mocker):
     if isinstance(current_widget, FileEditor):
         current_widget.save_file.assert_called_once_with("test_save.txt")
 
-# 追加: Ctrl+Sショートカットの統合テスト
 def test_ctrl_s_shortcut_saves_file_integration(main_window, mocker):
-    """MainWindowでのCtrl+Sショートカットがファイル保存をトリガーする統合テスト"""
+    """Ctrl+Sショートカットでファイル保存がトリガーされる統合テスト"""
     main_window.new_file()
     main_window.activateWindow()
     main_window.setFocus()
     mocker.patch('PySide6.QtWidgets.QFileDialog.getSaveFileName', return_value=("test_save.txt", ""))
     current_editor = main_window.tab_manager.currentWidget()
     save_mock = mocker.patch.object(current_editor, 'save_file')
-    # 登録されているCtrl+Sショートカットのアクションを直接トリガーする
     for action in main_window.actions():
         if action.shortcut().toString() == "Ctrl+S":
             action.trigger()
             break
-    QTest.qWait(100)  # イベント処理の待機
+    QTest.qWait(100)
     save_mock.assert_called_once_with("test_save.txt")
 
 def test_search_literal_integration(main_window):
@@ -78,7 +91,6 @@ def test_search_literal_integration(main_window):
     main_window.new_file()
     editor = main_window.tab_manager.currentWidget()
     editor.setPlainText("Integration test for literal search functionality.")
-    # Reset cursor and search attributes
     cursor = editor.textCursor()
     cursor.setPosition(0)
     editor.setTextCursor(cursor)
@@ -102,11 +114,10 @@ def test_search_regex_integration(main_window):
     main_window.search_text()
     cursor = editor.textCursor()
     selected = cursor.selectedText()
-    # "regex" should be matched by pattern r.*x
     assert "regex" in selected
 
 def test_search_not_found_integration(main_window):
-    """MainWindowでの検索機能（検索対象が見つからない場合）の統合テスト"""
+    """MainWindowで検索対象が見つからない場合の統合テスト"""
     main_window.new_file()
     editor = main_window.tab_manager.currentWidget()
     editor.setPlainText("Integration test for search functionality.")
@@ -120,29 +131,23 @@ def test_search_not_found_integration(main_window):
     assert final_position == initial_position
 
 def test_replace_integration(main_window):
-    """MainWindowでの置換機能の統合テスト（部分置換）"""
+    """MainWindowでの部分置換の統合テスト"""
     main_window.new_file()
     editor = main_window.tab_manager.currentWidget()
-    # 初期テキストを設定
     editor.setPlainText("Integration test: Hello world! This is a test.")
-    # 検索と選択
     main_window.regex_checkbox.setChecked(False)
     main_window.search_box.setText("world")
     main_window.search_text()
-    # 置換操作（現在選択中を置換）
     main_window.replace_box.setText("universe")
     main_window.replace_text()
     new_text = editor.toPlainText()
-    # "world" が "universe" に置き換わっているはず
     assert "universe" in new_text and "world" not in new_text
 
 def test_replace_all_integration(main_window):
-    """MainWindowでの全置換機能の統合テスト"""
+    """MainWindowでの全置換統合テスト"""
     main_window.new_file()
     editor = main_window.tab_manager.currentWidget()
-    # 複数箇所に同じ単語があるテキストを設定
     editor.setPlainText("Integration test: Hello world! Hello world!")
-    # リテラル置換モードで全置換を実行
     main_window.regex_checkbox.setChecked(False)
     main_window.search_box.setText("world")
     main_window.replace_box.setText("universe")
@@ -156,28 +161,22 @@ def test_redo_edit_integration(main_window):
     editor = main_window.tab_manager.currentWidget()
     initial_text = "Hello"
     editor.setPlainText(initial_text)
-    
-    # 変更：テキストを追加して変更
     cursor = editor.textCursor()
     cursor.movePosition(QTextCursor.End)
     editor.setTextCursor(cursor)
     editor.insertPlainText(" world")
     updated_text = editor.toPlainText()
-    
-    # Undo → Redo の動作確認
     main_window.undo_edit()
     assert editor.toPlainText() == initial_text
-    
     main_window.redo_edit()
     assert editor.toPlainText() == updated_text
 
 def test_save_file_updates_tab_name_integration(main_window, mocker):
-    """新規ファイル保存時にタブ名が保存したファイル名に更新されるかの統合テスト"""
+    """新規ファイル保存時にタブ名が更新される統合テスト"""
     main_window.new_file()
     editor = main_window.tab_manager.currentWidget()
     test_path = "c:/Users/grove/OneDrive/Desktop/開発/my_editor/test_save_name_integration.txt"
     mocker.patch('PySide6.QtWidgets.QFileDialog.getSaveFileName', return_value=(test_path, ""))
-    # 実際のファイル書き込みを行わないためのダミーsave_file
     editor.save_file = lambda f: setattr(editor, 'current_file', f)
     main_window.save_file()
     index = main_window.tab_manager.indexOf(editor)
@@ -185,16 +184,37 @@ def test_save_file_updates_tab_name_integration(main_window, mocker):
     assert main_window.tab_manager.tabText(index) == expected_name
 
 def test_open_folder_integration(main_window, mocker):
-    """MainWindowでフォルダを開く統合テスト：新規タブにQSplitterが追加され、ツリーが存在することを確認"""
+    """MainWindowでフォルダを開く統合テスト"""
     dummy_folder = "c:/dummy_integration_folder"
     mocker.patch('PySide6.QtWidgets.QFileDialog.getExistingDirectory', return_value=dummy_folder)
     initial_count = main_window.tab_manager.count()
     main_window.open_folder()
     new_count = main_window.tab_manager.count()
     assert new_count == initial_count + 1
-    from PySide6.QtWidgets import QSplitter, QTreeView
     widget = main_window.tab_manager.currentWidget()
     assert isinstance(widget, QSplitter)
-    # QTreeViewが含まれているか検証
     tree_views = widget.findChildren(QTreeView)
     assert len(tree_views) > 0
+
+# --- 移動された tests/test_main_window.py からの統合（重複するfixtureは除外） ---
+def test_zoom_in_integration(main_window, qtbot):
+    """MainWindowでの拡大機能の統合テスト"""
+    main_window.new_file()
+    editor = main_window.tab_manager.currentWidget()
+    initial_font_size = editor.font().pointSize()
+    qtbot.keyPress(main_window, Qt.Key_Control)
+    simulate_wheel_event(main_window, 120)
+    qtbot.keyRelease(main_window, Qt.Key_Control)
+    new_font_size = editor.font().pointSize()
+    assert new_font_size > initial_font_size
+
+def test_zoom_out_integration(main_window, qtbot):
+    """MainWindowでの縮小機能の統合テスト"""
+    main_window.new_file()
+    editor = main_window.tab_manager.currentWidget()
+    initial_font_size = editor.font().pointSize()
+    qtbot.keyPress(main_window, Qt.Key_Control)
+    simulate_wheel_event(main_window, -120)
+    qtbot.keyRelease(main_window, Qt.Key_Control)
+    new_font_size = editor.font().pointSize()
+    assert new_font_size < initial_font_size
