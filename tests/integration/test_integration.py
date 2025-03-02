@@ -183,3 +183,18 @@ def test_save_file_updates_tab_name_integration(main_window, mocker):
     index = main_window.tab_manager.indexOf(editor)
     expected_name = os.path.basename(test_path)
     assert main_window.tab_manager.tabText(index) == expected_name
+
+def test_open_folder_integration(main_window, mocker):
+    """MainWindowでフォルダを開く統合テスト：新規タブにQSplitterが追加され、ツリーが存在することを確認"""
+    dummy_folder = "c:/dummy_integration_folder"
+    mocker.patch('PySide6.QtWidgets.QFileDialog.getExistingDirectory', return_value=dummy_folder)
+    initial_count = main_window.tab_manager.count()
+    main_window.open_folder()
+    new_count = main_window.tab_manager.count()
+    assert new_count == initial_count + 1
+    from PySide6.QtWidgets import QSplitter, QTreeView
+    widget = main_window.tab_manager.currentWidget()
+    assert isinstance(widget, QSplitter)
+    # QTreeViewが含まれているか検証
+    tree_views = widget.findChildren(QTreeView)
+    assert len(tree_views) > 0
