@@ -1,7 +1,8 @@
 import sys
 import os
-from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QVBoxLayout, QWidget, QFileDialog, QToolBar, QLineEdit
-from PySide6.QtGui import QAction, QKeySequence
+import re
+from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QVBoxLayout, QWidget, QFileDialog, QToolBar, QLineEdit, QCheckBox
+from PySide6.QtGui import QAction, QKeySequence, QTextCursor
 from PySide6.QtCore import Qt
 from my_package.tab import TabManager
 from my_package.editor import FileEditor
@@ -17,6 +18,9 @@ class MainWindow(QMainWindow):
         self.create_tab_manager()
         self.create_tool_bar()
         self.create_shortcuts()
+        # 新規属性：前回の検索パターンと最後のヒット位置
+        self.last_search_pattern = ""
+        self.last_match_end = 0
 
     def apply_styles(self):
         """スタイルシートを適用する"""
@@ -92,24 +96,58 @@ class MainWindow(QMainWindow):
         self.search_box.setPlaceholderText("検索...")
         self.search_box.returnPressed.connect(self.search_text)
         self.tool_bar.addWidget(self.search_box)
+        
+        # 正規表現利用の有無を切り替えるチェックボックスを追加
+        self.regex_checkbox = QCheckBox("正規表現", self)
+        self.regex_checkbox.setChecked(False)
+        self.tool_bar.addWidget(self.regex_checkbox)
+        
         self.tool_bar.setMovable(False)
         self.tool_bar.setFloatable(False)
         self.tool_bar.hide()
 
     def search_text(self):
-        """検索テキストをハイライトする"""
+        """検索テキストを、正規表現モードかリテラルモードかでハイライトする"""
         current_widget = self.tab_manager.currentWidget()
         if isinstance(current_widget, FileEditor):
-            search_text = self.search_box.text()
-            if search_text:
-                cursor = current_widget.textCursor()
-                document = current_widget.document()
-                found_cursor = document.find(search_text, cursor)
-                if found_cursor.isNull():
-                    found_cursor = document.find(search_text)
-                if not found_cursor.isNull():
-                    current_widget.setTextCursor(found_cursor)
-            current_widget.setFocus()
+            pattern = self.search_box.text()
+            if pattern:
+                text = current_widget.toPlainText()
+                # 検索モードに応じた検索処理
+                if self.regex_checkbox.isChecked():
+                    try:
+                        regex = re.compile(pattern, re.DOTALL)
+                    except re.error:
+                        return
+                    start_pos = self.last_match_end if pattern == self.last_search_pattern else 0
+                    match = regex.search(text, start_pos)
+                    if not match:
+                        match = regex.search(text, 0)
+                    if match:
+                        cursor = current_widget.textCursor()
+                        cursor.setPosition(match.start())
+                        cursor.setPosition(match.end(), QTextCursor.KeepAnchor)
+                        current_widget.setTextCursor(cursor)
+                        self.last_match_end = match.end()
+                        self.last_search_pattern = pattern
+                    else:
+                        self.last_search_pattern = ""
+                        self.last_match_end = 0
+                else:
+                    # リテラル検索
+                    start_pos = self.last_match_end if pattern == self.last_search_pattern else 0
+                    match_cursor = current_widget.document().find(pattern, start_pos)
+                    if match_cursor.isNull():
+                        match_cursor = current_widget.document().find(pattern, 0)
+                    if not match_cursor.isNull():
+                        current_widget.setTextCursor(match_cursor)
+                        self.last_match_end = match_cursor.selectionEnd()
+                        self.last_search_pattern = pattern
+                    else:
+                        self.last_search_pattern = ""
+                        self.last_match_end = 0
+            # 検索後は検索ボックスにフォーカスを戻す
+            self.search_box.setFocus()
 
     def create_shortcuts(self):
         """ショートカットを作成する"""

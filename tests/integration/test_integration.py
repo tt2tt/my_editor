@@ -20,6 +20,7 @@ def app():
 def main_window(app):
     """MainWindowのインスタンスを作成するフィクスチャ"""
     window = MainWindow()
+    window.show()
     return window
 
 def test_add_tab_in_main_window(main_window):
@@ -53,35 +54,48 @@ def test_save_file_in_main_window(main_window, mocker):
     if isinstance(current_widget, FileEditor):
         current_widget.save_file.assert_called_once_with("test_save.txt")
 
-def test_search_function_integration(main_window):
-    """MainWindowでの検索機能の統合テスト"""
+def test_search_literal_integration(main_window):
+    """MainWindowでのリテラル検索の統合テスト"""
     main_window.new_file()
     editor = main_window.tab_manager.currentWidget()
-    editor.setPlainText("Integration test for search functionality.")
+    editor.setPlainText("Integration test for literal search functionality.")
+    # Reset cursor and search attributes
     cursor = editor.textCursor()
     cursor.setPosition(0)
     editor.setTextCursor(cursor)
-    
-    main_window.search_box.setText("search")
+    main_window.regex_checkbox.setChecked(False)
+    main_window.search_box.setText("literal")
     main_window.search_text()
-    
     cursor = editor.textCursor()
     selected = cursor.selectedText()
-    assert "search" in selected
+    assert "literal" in selected
 
-def test_search_function_not_found_integration(main_window):
-    """MainWindowでの検索機能の統合テスト（検索対象が見つからない場合）"""
+def test_search_regex_integration(main_window):
+    """MainWindowでの正規表現検索の統合テスト"""
+    main_window.new_file()
+    editor = main_window.tab_manager.currentWidget()
+    editor.setPlainText("Integration test for regex search functionality.")
+    cursor = editor.textCursor()
+    cursor.setPosition(0)
+    editor.setTextCursor(cursor)
+    main_window.regex_checkbox.setChecked(True)
+    main_window.search_box.setText("r.*x")
+    main_window.search_text()
+    cursor = editor.textCursor()
+    selected = cursor.selectedText()
+    # "regex" should be matched by pattern r.*x
+    assert "regex" in selected
+
+def test_search_not_found_integration(main_window):
+    """MainWindowでの検索機能（検索対象が見つからない場合）の統合テスト"""
     main_window.new_file()
     editor = main_window.tab_manager.currentWidget()
     editor.setPlainText("Integration test for search functionality.")
     cursor = editor.textCursor()
     cursor.setPosition(0)
     editor.setTextCursor(cursor)
-    
     initial_position = editor.textCursor().position()
-    
     main_window.search_box.setText("nonexistent")
     main_window.search_text()
-    
     final_position = editor.textCursor().position()
     assert final_position == initial_position

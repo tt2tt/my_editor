@@ -2,12 +2,13 @@ import pytest
 from PySide6.QtWidgets import QApplication, QMenu
 from main_window import MainWindow
 from my_package.editor import FileEditor
+from PySide6.QtGui import QTextCursor
 
 @pytest.fixture(scope="session")
 def app():
     """QApplicationのインスタンスを作成するフィクスチャ"""
     app = QApplication.instance()
-    if (app is None):
+    if app is None:
         app = QApplication([])
     yield app
     app.quit()
@@ -16,6 +17,7 @@ def app():
 def main_window(app):
     """MainWindowのインスタンスを作成するフィクスチャ"""
     window = MainWindow()
+    window.show()
     return window
 
 def test_window_title(main_window):
@@ -24,10 +26,11 @@ def test_window_title(main_window):
 
 def test_window_geometry(main_window):
     """ウィンドウのジオメトリのテスト"""
-    assert main_window.geometry().x() == 100
-    assert main_window.geometry().y() == 100
-    assert main_window.geometry().width() == 800
-    assert main_window.geometry().height() == 600
+    geom = main_window.geometry()
+    assert geom.x() == 100
+    assert geom.y() == 100
+    assert geom.width() == 800
+    assert geom.height() == 600
 
 def test_menu_bar_exists(main_window):
     """メニューバーが存在するかのテスト"""
@@ -81,8 +84,8 @@ def test_save_file_action(main_window, mocker):
     if isinstance(current_widget, FileEditor):
         current_widget.save_file.assert_called_once_with("test_save.txt")
 
-def test_search_function_found(main_window):
-    """検索機能のテスト（検索対象が見つかる場合）"""
+def test_search_literal_found(main_window):
+    """リテラル検索テスト（対象が見つかる場合）"""
     main_window.new_file()
     editor = main_window.tab_manager.currentWidget()
     editor.setPlainText("Hello world! This is a test.")
@@ -90,6 +93,9 @@ def test_search_function_found(main_window):
     cursor.setPosition(0)
     editor.setTextCursor(cursor)
     
+    # リテラル検索：正規表現チェックをオフ
+    if main_window.regex_checkbox.isChecked():
+        main_window.regex_checkbox.setChecked(False)
     main_window.search_box.setText("world")
     main_window.search_text()
     
@@ -97,8 +103,8 @@ def test_search_function_found(main_window):
     selected = cursor.selectedText()
     assert "world" in selected
 
-def test_search_function_not_found(main_window):
-    """検索機能のテスト（検索対象が見つからない場合）"""
+def test_search_literal_not_found(main_window):
+    """リテラル検索テスト（対象が見つからない場合）"""
     main_window.new_file()
     editor = main_window.tab_manager.currentWidget()
     editor.setPlainText("Hello world! This is a test.")
@@ -106,10 +112,46 @@ def test_search_function_not_found(main_window):
     cursor.setPosition(0)
     editor.setTextCursor(cursor)
     
-    initial_position = editor.textCursor().position()
-    
+    initial_pos = editor.textCursor().position()
+    if main_window.regex_checkbox.isChecked():
+        main_window.regex_checkbox.setChecked(False)
     main_window.search_box.setText("nonexistent")
     main_window.search_text()
     
-    final_position = editor.textCursor().position()
-    assert final_position == initial_position
+    final_pos = editor.textCursor().position()
+    assert final_pos == initial_pos
+
+def test_search_regex_found(main_window):
+    """正規表現検索テスト（対象が見つかる場合）"""
+    main_window.new_file()
+    editor = main_window.tab_manager.currentWidget()
+    editor.setPlainText("Hello world! This is a test.")
+    cursor = editor.textCursor()
+    cursor.setPosition(0)
+    editor.setTextCursor(cursor)
+    
+    main_window.regex_checkbox.setChecked(True)
+    main_window.search_box.setText("w.*d")
+    main_window.search_text()
+    
+    cursor = editor.textCursor()
+    selected = cursor.selectedText()
+    # w.*d should match "world"
+    assert "world" in selected
+
+def test_search_regex_invalid(main_window):
+    """正規表現検索テスト（無効な正規表現の場合）"""
+    main_window.new_file()
+    editor = main_window.tab_manager.currentWidget()
+    editor.setPlainText("Hello world! This is a test.")
+    cursor = editor.textCursor()
+    cursor.setPosition(0)
+    editor.setTextCursor(cursor)
+    
+    main_window.regex_checkbox.setChecked(True)
+    main_window.search_box.setText("*invalid")
+    current_pos_before = editor.textCursor().position()
+    main_window.search_text()
+    current_pos_after = editor.textCursor().position()
+    # 検索できなければカーソル位置は変わらない
+    assert current_pos_after == current_pos_before
