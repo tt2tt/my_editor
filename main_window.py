@@ -18,7 +18,7 @@ class MainWindow(QMainWindow):
         self.create_tab_manager()
         self.create_tool_bar()
         self.create_shortcuts()
-        self.setFocusPolicy(Qt.StrongFocus)  # 追加: ショートカットが発生するようフォーカスを明示的に要求
+        self.setFocusPolicy(Qt.StrongFocus)  # ショートカットが発生するようフォーカスを明示的に要求
         # 新規属性：前回の検索パターンと最後のヒット位置
         self.last_search_pattern = ""
         self.last_match_end = 0
@@ -52,6 +52,20 @@ class MainWindow(QMainWindow):
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
 
+        # 編集メニューを追加
+        edit_menu = QMenu("&編集", self)
+        menu_bar.addMenu(edit_menu)
+        undo_action = QAction("&元に戻す", self)
+        undo_action.setShortcut(QKeySequence("Ctrl+Z"))
+        undo_action.triggered.connect(self.undo_edit)
+        edit_menu.addAction(undo_action)
+        
+        # 追加: やり直す機能のアクション
+        redo_action = QAction("やり直す", self)
+        redo_action.setShortcut(QKeySequence("Ctrl+Y"))
+        redo_action.triggered.connect(self.redo_edit)
+        edit_menu.addAction(redo_action)
+
     def open_file(self):
         """ファイルを開く"""
         file_path, _ = QFileDialog.getOpenFileName(self, "ファイルを開く", "", "All Files (*);;Text Files (*.txt)")
@@ -76,6 +90,10 @@ class MainWindow(QMainWindow):
                 file_path, _ = QFileDialog.getSaveFileName(self, "ファイルを保存", "", "All Files (*);;Text Files (*.txt)")
                 if file_path:
                     current_widget.save_file(file_path)
+                    # 追加: 保存したファイル名でタブ名を更新する
+                    file_name = os.path.basename(file_path)
+                    index = self.tab_manager.indexOf(current_widget)
+                    self.tab_manager.setTabText(index, file_name)
             else:
                 current_widget.save_file()
 
@@ -240,6 +258,19 @@ class MainWindow(QMainWindow):
         current_widget = self.tab_manager.currentWidget()
         if isinstance(current_widget, FileEditor):
             current_widget.zoom_out()
+
+    def undo_edit(self):
+        """戻る"""
+        current_widget = self.tab_manager.currentWidget()
+        # 現在のタブがFileEditorの場合にundoを実行
+        if current_widget is not None and hasattr(current_widget, "undo"):
+            current_widget.undo()
+    
+    def redo_edit(self):
+        """進む"""
+        current_widget = self.tab_manager.currentWidget()
+        if current_widget is not None and hasattr(current_widget, "redo"):
+            current_widget.redo()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

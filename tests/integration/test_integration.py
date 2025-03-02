@@ -3,6 +3,7 @@ import sys
 import os
 from PySide6.QtWidgets import QApplication
 from PySide6.QtTest import QTest
+from PySide6.QtGui import QTextCursor
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 from main_window import MainWindow
 from my_package.editor import FileEditor
@@ -148,3 +149,37 @@ def test_replace_all_integration(main_window):
     main_window.replace_all_text()
     new_text = editor.toPlainText()
     assert new_text == "Integration test: Hello universe! Hello universe!"
+
+def test_redo_edit_integration(main_window):
+    """MainWindowでのRedo機能の統合テスト"""
+    main_window.new_file()
+    editor = main_window.tab_manager.currentWidget()
+    initial_text = "Hello"
+    editor.setPlainText(initial_text)
+    
+    # 変更：テキストを追加して変更
+    cursor = editor.textCursor()
+    cursor.movePosition(QTextCursor.End)
+    editor.setTextCursor(cursor)
+    editor.insertPlainText(" world")
+    updated_text = editor.toPlainText()
+    
+    # Undo → Redo の動作確認
+    main_window.undo_edit()
+    assert editor.toPlainText() == initial_text
+    
+    main_window.redo_edit()
+    assert editor.toPlainText() == updated_text
+
+def test_save_file_updates_tab_name_integration(main_window, mocker):
+    """新規ファイル保存時にタブ名が保存したファイル名に更新されるかの統合テスト"""
+    main_window.new_file()
+    editor = main_window.tab_manager.currentWidget()
+    test_path = "c:/Users/grove/OneDrive/Desktop/開発/my_editor/test_save_name_integration.txt"
+    mocker.patch('PySide6.QtWidgets.QFileDialog.getSaveFileName', return_value=(test_path, ""))
+    # 実際のファイル書き込みを行わないためのダミーsave_file
+    editor.save_file = lambda f: setattr(editor, 'current_file', f)
+    main_window.save_file()
+    index = main_window.tab_manager.indexOf(editor)
+    expected_name = os.path.basename(test_path)
+    assert main_window.tab_manager.tabText(index) == expected_name

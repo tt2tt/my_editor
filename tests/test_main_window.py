@@ -3,7 +3,7 @@ import os
 import pytest
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt, QPoint
-from PySide6.QtGui import QWheelEvent
+from PySide6.QtGui import QWheelEvent, QTextCursor
 
 # プロジェクトのルートディレクトリをsys.pathに追加
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'my_editor')))
@@ -72,3 +72,27 @@ def test_ctrl_s_shortcut_saves_file(app, qtbot, mocker):
             break
     qtbot.wait(100)  # イベント処理のための待機
     save_mock.assert_called_once_with("test_save.txt")
+
+def test_redo_edit_unit(app, mocker):
+    """Redo機能の単体テスト：redo_editがFileEditor.redoを呼び出すか確認する"""
+    app.new_file()
+    editor = app.tab_manager.currentWidget()
+    redo_mock = mocker.patch.object(editor, 'redo')
+    app.redo_edit()
+    redo_mock.assert_called_once()
+
+def test_save_file_updates_tab_name(app, mocker):
+    """新規ファイル保存時にタブ名が保存したファイル名に更新されるかのテスト"""
+    app.new_file()
+    editor = app.tab_manager.currentWidget()
+    # テスト用のファイルパスを設定
+    test_path = "c:/Users/grove/OneDrive/Desktop/開発/my_editor/test_save_updated.txt"
+    # ダイアログで返すファイル名のモック
+    mocker.patch('PySide6.QtWidgets.QFileDialog.getSaveFileName', return_value=(test_path, ""))
+    # 保存処理で実際のファイル書き込みを行わないように、ダミーのsave_fileを定義
+    editor.save_file = lambda f: setattr(editor, 'current_file', f)
+    app.save_file()
+    # タブ名が保存したファイル名のbasenameに更新されているか確認
+    index = app.tab_manager.indexOf(editor)
+    expected_name = os.path.basename(test_path)
+    assert app.tab_manager.tabText(index) == expected_name
