@@ -1,7 +1,7 @@
 import pytest
 from PySide6.QtWidgets import QApplication
+
 from my_package.editor import FileEditor
-import os
 
 @pytest.fixture(scope="session")
 def app():

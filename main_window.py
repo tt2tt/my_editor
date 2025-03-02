@@ -1,11 +1,14 @@
 import sys
 import os
 import re
-from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QVBoxLayout, QWidget, QFileDialog, QToolBar, QLineEdit, QCheckBox, QPushButton
+
+from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QVBoxLayout, QWidget, QFileDialog, QToolBar, QLineEdit, QCheckBox, QPushButton, QTabWidget, QSplitter, QTreeView, QFileSystemModel
 from PySide6.QtGui import QAction, QKeySequence, QTextCursor
 from PySide6.QtCore import Qt
+
 from my_package.tab import TabManager
 from my_package.editor import FileEditor
+from my_package.sub_package.my_logger import MyLogger
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -85,7 +88,6 @@ class MainWindow(QMainWindow):
     def open_folder(self):
         folder_path = QFileDialog.getExistingDirectory(self, "フォルダを開く", "")
         if folder_path:
-            from PySide6.QtWidgets import QSplitter, QTreeView, QTabWidget, QFileSystemModel
             splitter = QSplitter()  # 水平分割
             # 左側：フォルダツリー
             tree_view = QTreeView()
@@ -121,7 +123,6 @@ class MainWindow(QMainWindow):
 
     def new_file(self):
         """新しいファイルを作成する"""
-        print(2/0)
         editor = FileEditor()
         self.tab_manager.add_new_tab("新しいファイル", editor)
         self.tab_manager.setCurrentWidget(editor)
@@ -133,7 +134,6 @@ class MainWindow(QMainWindow):
         if isinstance(current_widget, FileEditor):
             file_editor = current_widget
         else:
-            from PySide6.QtWidgets import QTabWidget
             internal_tabs = current_widget.findChild(QTabWidget)
             if internal_tabs:
                 candidate = internal_tabs.currentWidget()
@@ -198,13 +198,11 @@ class MainWindow(QMainWindow):
 
     def search_text(self):
         """検索テキストを、正規表現モードかリテラルモードかでハイライトする"""
-        # FileEditor を直接または内部タブから取得するように変更
         current_widget = self.tab_manager.currentWidget()
         file_editor = None
         if isinstance(current_widget, FileEditor):
             file_editor = current_widget
         else:
-            from PySide6.QtWidgets import QTabWidget
             internal_tabs = current_widget.findChild(QTabWidget)
             if internal_tabs:
                 candidate = internal_tabs.currentWidget()
@@ -254,7 +252,6 @@ class MainWindow(QMainWindow):
         if isinstance(current_widget, FileEditor):
             file_editor = current_widget
         else:
-            from PySide6.QtWidgets import QTabWidget
             internal_tabs = current_widget.findChild(QTabWidget)
             if internal_tabs:
                 candidate = internal_tabs.currentWidget()
@@ -274,7 +271,6 @@ class MainWindow(QMainWindow):
         if isinstance(current_widget, FileEditor):
             file_editor = current_widget
         else:
-            from PySide6.QtWidgets import QTabWidget
             internal_tabs = current_widget.findChild(QTabWidget)
             if internal_tabs:
                 candidate = internal_tabs.currentWidget()
@@ -288,7 +284,6 @@ class MainWindow(QMainWindow):
                 new_text = ""
                 if self.regex_checkbox.isChecked():
                     try:
-                        import re
                         regex = re.compile(search_pattern, re.DOTALL)
                         new_text = regex.sub(replacement, original_text)
                     except re.error:
@@ -354,7 +349,6 @@ class MainWindow(QMainWindow):
             current_widget.redo()
 
 if __name__ == "__main__":
-    from my_package.sub_package.my_logger import MyLogger
     logger = MyLogger().get_logger()
     app = QApplication(sys.argv)
     window = MainWindow()

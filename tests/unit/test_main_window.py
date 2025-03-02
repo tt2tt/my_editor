@@ -1,8 +1,8 @@
 import pytest
-from PySide6.QtWidgets import QApplication, QMenu
+from PySide6.QtWidgets import QApplication
+
 from main_window import MainWindow
 from my_package.editor import FileEditor
-from PySide6.QtGui import QTextCursor
 
 @pytest.fixture(scope="session")
 def app():

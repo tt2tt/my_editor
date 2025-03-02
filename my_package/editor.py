@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QTextEdit, QPlainTextEdit
 from PySide6.QtCore import Qt, QRect
 from PySide6.QtGui import QPainter, QColor, QTextFormat
+
 from .line_number_area import LineNumberArea
 
 class FileEditor(QPlainTextEdit):

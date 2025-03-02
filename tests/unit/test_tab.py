@@ -1,5 +1,6 @@
 import pytest
 from PySide6.QtWidgets import QApplication
+
 from my_package.tab import TabManager
 from my_package.editor import FileEditor
 

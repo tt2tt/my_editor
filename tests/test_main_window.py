@@ -1,7 +1,7 @@
 import sys
 import os
 import pytest
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QSplitter  # 追加: QSplitter
 from PySide6.QtCore import Qt, QPoint
 from PySide6.QtGui import QWheelEvent, QTextCursor
 
@@ -15,7 +15,7 @@ from my_package.editor import FileEditor
 def qapp():
     """QApplicationのインスタンスを作成するフィクスチャ"""
     app = QApplication.instance()
-    if app is None:
+    if (app is None):
         app = QApplication([])
     yield app
     app.quit()
@@ -67,7 +67,7 @@ def test_ctrl_s_shortcut_saves_file(app, qtbot, mocker):
     save_mock = mocker.patch.object(current_editor, 'save_file')
     # 登録されている Ctrl+S ショートカットのアクションを直接トリガーする
     for action in app.actions():
-        if action.shortcut().toString() == "Ctrl+S":
+        if (action.shortcut().toString() == "Ctrl+S"):
             action.trigger()
             break
     qtbot.wait(100)  # イベント処理のための待機
@@ -106,6 +106,5 @@ def test_open_folder_action(app, mocker):
     new_count = app.tab_manager.count()
     assert new_count == initial_count + 1
     # 追加されたタブは QSplitter であるはず
-    from PySide6.QtWidgets import QSplitter
     widget = app.tab_manager.currentWidget()
     assert isinstance(widget, QSplitter)
