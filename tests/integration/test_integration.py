@@ -2,6 +2,7 @@ import pytest
 import sys
 import os
 from PySide6.QtWidgets import QApplication
+from PySide6.QtTest import QTest
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 from main_window import MainWindow
 from my_package.editor import FileEditor
@@ -53,6 +54,23 @@ def test_save_file_in_main_window(main_window, mocker):
     current_widget = main_window.tab_manager.currentWidget()
     if isinstance(current_widget, FileEditor):
         current_widget.save_file.assert_called_once_with("test_save.txt")
+
+# 追加: Ctrl+Sショートカットの統合テスト
+def test_ctrl_s_shortcut_saves_file_integration(main_window, mocker):
+    """MainWindowでのCtrl+Sショートカットがファイル保存をトリガーする統合テスト"""
+    main_window.new_file()
+    main_window.activateWindow()
+    main_window.setFocus()
+    mocker.patch('PySide6.QtWidgets.QFileDialog.getSaveFileName', return_value=("test_save.txt", ""))
+    current_editor = main_window.tab_manager.currentWidget()
+    save_mock = mocker.patch.object(current_editor, 'save_file')
+    # 登録されているCtrl+Sショートカットのアクションを直接トリガーする
+    for action in main_window.actions():
+        if action.shortcut().toString() == "Ctrl+S":
+            action.trigger()
+            break
+    QTest.qWait(100)  # イベント処理の待機
+    save_mock.assert_called_once_with("test_save.txt")
 
 def test_search_literal_integration(main_window):
     """MainWindowでのリテラル検索の統合テスト"""

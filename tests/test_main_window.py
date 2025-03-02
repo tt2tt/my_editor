@@ -54,3 +54,21 @@ def test_zoom_out(app, qtbot):
     qtbot.keyRelease(app, Qt.Key_Control)
     new_font_size = editor.font().pointSize()
     assert new_font_size < initial_font_size
+
+def test_ctrl_s_shortcut_saves_file(app, qtbot, mocker):
+    """Ctrl+Sショートカットでファイルが保存されるかのテスト"""
+    app.new_file()
+    app.activateWindow()
+    app.setFocus()
+    # ダイアログで返すファイル名をモックする
+    mocker.patch('PySide6.QtWidgets.QFileDialog.getSaveFileName', return_value=("test_save.txt", ""))
+    # FileEditor.save_file をモックする
+    current_editor = app.tab_manager.currentWidget()
+    save_mock = mocker.patch.object(current_editor, 'save_file')
+    # 登録されている Ctrl+S ショートカットのアクションを直接トリガーする
+    for action in app.actions():
+        if action.shortcut().toString() == "Ctrl+S":
+            action.trigger()
+            break
+    qtbot.wait(100)  # イベント処理のための待機
+    save_mock.assert_called_once_with("test_save.txt")
