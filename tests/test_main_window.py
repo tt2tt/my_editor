@@ -3,7 +3,7 @@ import os
 import pytest
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt, QPoint
-from PySide6.QtGui import QWheelEvent
+from PySide6.QtGui import QWheelEvent, QTextCursor
 
 # プロジェクトのルートディレクトリをsys.pathに追加
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'my_editor')))
@@ -72,3 +72,11 @@ def test_ctrl_s_shortcut_saves_file(app, qtbot, mocker):
             break
     qtbot.wait(100)  # イベント処理のための待機
     save_mock.assert_called_once_with("test_save.txt")
+
+def test_redo_edit_unit(app, mocker):
+    """Redo機能の単体テスト：redo_editがFileEditor.redoを呼び出すか確認する"""
+    app.new_file()
+    editor = app.tab_manager.currentWidget()
+    redo_mock = mocker.patch.object(editor, 'redo')
+    app.redo_edit()
+    redo_mock.assert_called_once()
