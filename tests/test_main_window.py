@@ -96,3 +96,16 @@ def test_save_file_updates_tab_name(app, mocker):
     index = app.tab_manager.indexOf(editor)
     expected_name = os.path.basename(test_path)
     assert app.tab_manager.tabText(index) == expected_name
+
+def test_open_folder_action(app, mocker):
+    """フォルダを開くアクションのテスト（タブにQSplitterが追加されることを検証）"""
+    dummy_folder = "c:/dummy_folder"
+    mocker.patch('PySide6.QtWidgets.QFileDialog.getExistingDirectory', return_value=dummy_folder)
+    initial_count = app.tab_manager.count()
+    app.open_folder()
+    new_count = app.tab_manager.count()
+    assert new_count == initial_count + 1
+    # 追加されたタブは QSplitter であるはず
+    from PySide6.QtWidgets import QSplitter
+    widget = app.tab_manager.currentWidget()
+    assert isinstance(widget, QSplitter)

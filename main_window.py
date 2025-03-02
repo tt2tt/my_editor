@@ -44,6 +44,11 @@ class MainWindow(QMainWindow):
         open_action.triggered.connect(self.open_file)
         file_menu.addAction(open_action)
 
+        # 追加: フォルダを開くアクションを追加
+        open_folder_action = QAction("&フォルダを開く", self)
+        open_folder_action.triggered.connect(self.open_folder)
+        file_menu.addAction(open_folder_action)
+
         save_action = QAction("&保存", self)
         save_action.triggered.connect(self.save_file)
         file_menu.addAction(save_action)
@@ -76,6 +81,44 @@ class MainWindow(QMainWindow):
             self.tab_manager.add_new_tab(file_name, editor)
             self.tab_manager.setCurrentWidget(editor)
 
+    # フォルダを開く機能
+    def open_folder(self):
+        folder_path = QFileDialog.getExistingDirectory(self, "フォルダを開く", "")
+        if folder_path:
+            from PySide6.QtWidgets import QSplitter, QTreeView, QTabWidget, QFileSystemModel
+            splitter = QSplitter()  # 水平分割
+            # 左側：フォルダツリー
+            tree_view = QTreeView()
+            # ツリービューの最大幅を設定して表示を小さくする
+            tree_view.setMaximumWidth(200)
+            model = QFileSystemModel(tree_view)
+            model.setRootPath(folder_path)
+            tree_view.setModel(model)
+            tree_view.setRootIndex(model.index(folder_path))
+            splitter.addWidget(tree_view)
+            # ツリー領域を全体の1/5に設定
+            splitter.setStretchFactor(0, 1)
+            # 右側：内部タブ（ファイルエディタ用）
+            internal_tabs = QTabWidget()
+            splitter.addWidget(internal_tabs)
+            # 内部タブ領域を全体の4/5に設定
+            splitter.setStretchFactor(1, 4)
+            
+            # ツリー上でダブルクリックされたとき、内部タブにファイルを追加
+            def on_treeview_doubleClicked(index):
+                file_path = model.filePath(index)
+                if os.path.isfile(file_path):
+                    editor = FileEditor()
+                    editor.open_file(file_path)
+                    file_name = os.path.basename(file_path)
+                    internal_tabs.addTab(editor, file_name)
+                    internal_tabs.setCurrentWidget(editor)
+            tree_view.doubleClicked.connect(on_treeview_doubleClicked)
+            
+            folder_name = os.path.basename(folder_path)
+            self.tab_manager.add_new_tab(folder_name, splitter)
+            self.tab_manager.setCurrentWidget(splitter)
+
     def new_file(self):
         """新しいファイルを作成する"""
         editor = FileEditor()
@@ -85,17 +128,29 @@ class MainWindow(QMainWindow):
     def save_file(self):
         """ファイルを保存する"""
         current_widget = self.tab_manager.currentWidget()
+        file_editor = None
         if isinstance(current_widget, FileEditor):
-            if current_widget.current_file is None:
+            file_editor = current_widget
+        else:
+            from PySide6.QtWidgets import QTabWidget
+            internal_tabs = current_widget.findChild(QTabWidget)
+            if internal_tabs:
+                candidate = internal_tabs.currentWidget()
+                if isinstance(candidate, FileEditor):
+                    file_editor = candidate
+        if file_editor is not None:
+            if file_editor.current_file is None:
                 file_path, _ = QFileDialog.getSaveFileName(self, "ファイルを保存", "", "All Files (*);;Text Files (*.txt)")
                 if file_path:
-                    current_widget.save_file(file_path)
-                    # 追加: 保存したファイル名でタブ名を更新する
+                    file_editor.save_file(file_path)
                     file_name = os.path.basename(file_path)
-                    index = self.tab_manager.indexOf(current_widget)
-                    self.tab_manager.setTabText(index, file_name)
+                    if isinstance(current_widget, FileEditor):
+                        index = self.tab_manager.indexOf(current_widget)
+                        self.tab_manager.setTabText(index, file_name)
+                    else:
+                        internal_tabs.setTabText(internal_tabs.indexOf(file_editor), file_name)
             else:
-                current_widget.save_file()
+                file_editor.save_file()
 
     def create_tab_manager(self):
         """TabManagerを作成して表示する"""
@@ -142,12 +197,22 @@ class MainWindow(QMainWindow):
 
     def search_text(self):
         """検索テキストを、正規表現モードかリテラルモードかでハイライトする"""
+        # FileEditor を直接または内部タブから取得するように変更
         current_widget = self.tab_manager.currentWidget()
+        file_editor = None
         if isinstance(current_widget, FileEditor):
+            file_editor = current_widget
+        else:
+            from PySide6.QtWidgets import QTabWidget
+            internal_tabs = current_widget.findChild(QTabWidget)
+            if internal_tabs:
+                candidate = internal_tabs.currentWidget()
+                if isinstance(candidate, FileEditor):
+                    file_editor = candidate
+        if file_editor is not None:
             pattern = self.search_box.text()
             if pattern:
-                text = current_widget.toPlainText()
-                # 検索モードに応じた検索処理
+                text = file_editor.toPlainText()
                 if self.regex_checkbox.isChecked():
                     try:
                         regex = re.compile(pattern, re.DOTALL)
@@ -158,61 +223,78 @@ class MainWindow(QMainWindow):
                     if not match:
                         match = regex.search(text, 0)
                     if match:
-                        cursor = current_widget.textCursor()
+                        cursor = file_editor.textCursor()
                         cursor.setPosition(match.start())
                         cursor.setPosition(match.end(), QTextCursor.KeepAnchor)
-                        current_widget.setTextCursor(cursor)
+                        file_editor.setTextCursor(cursor)
                         self.last_match_end = match.end()
                         self.last_search_pattern = pattern
                     else:
                         self.last_search_pattern = ""
                         self.last_match_end = 0
                 else:
-                    # リテラル検索
                     start_pos = self.last_match_end if pattern == self.last_search_pattern else 0
-                    match_cursor = current_widget.document().find(pattern, start_pos)
+                    match_cursor = file_editor.document().find(pattern, start_pos)
                     if match_cursor.isNull():
-                        match_cursor = current_widget.document().find(pattern, 0)
+                        match_cursor = file_editor.document().find(pattern, 0)
                     if not match_cursor.isNull():
-                        current_widget.setTextCursor(match_cursor)
+                        file_editor.setTextCursor(match_cursor)
                         self.last_match_end = match_cursor.selectionEnd()
                         self.last_search_pattern = pattern
                     else:
                         self.last_search_pattern = ""
                         self.last_match_end = 0
-            # 検索後は検索ボックスにフォーカスを戻す
-            self.search_box.setFocus()
+        self.search_box.setFocus()
 
     def replace_text(self):
         """現在の選択部分を置換欄の内容で置換し、次のヒットを検索する"""
         current_widget = self.tab_manager.currentWidget()
+        file_editor = None
         if isinstance(current_widget, FileEditor):
+            file_editor = current_widget
+        else:
+            from PySide6.QtWidgets import QTabWidget
+            internal_tabs = current_widget.findChild(QTabWidget)
+            if internal_tabs:
+                candidate = internal_tabs.currentWidget()
+                if isinstance(candidate, FileEditor):
+                    file_editor = candidate
+        if file_editor is not None:
             replacement = self.replace_box.text()
-            cursor = current_widget.textCursor()
-            if not cursor.selectedText() == "":
+            cursor = file_editor.textCursor()
+            if cursor.selectedText() != "":
                 cursor.insertText(replacement)
-                # 置換後、次のヒットを検索する
                 self.search_text()
 
     def replace_all_text(self):
         """全置換機能：全ての検索対象を置換欄の内容で置換する"""
         current_widget = self.tab_manager.currentWidget()
+        file_editor = None
         if isinstance(current_widget, FileEditor):
+            file_editor = current_widget
+        else:
+            from PySide6.QtWidgets import QTabWidget
+            internal_tabs = current_widget.findChild(QTabWidget)
+            if internal_tabs:
+                candidate = internal_tabs.currentWidget()
+                if isinstance(candidate, FileEditor):
+                    file_editor = candidate
+        if file_editor is not None:
             search_pattern = self.search_box.text()
             replacement = self.replace_box.text()
             if search_pattern:
-                original_text = current_widget.toPlainText()
+                original_text = file_editor.toPlainText()
                 new_text = ""
                 if self.regex_checkbox.isChecked():
                     try:
+                        import re
                         regex = re.compile(search_pattern, re.DOTALL)
                         new_text = regex.sub(replacement, original_text)
                     except re.error:
                         return
                 else:
                     new_text = original_text.replace(search_pattern, replacement)
-                current_widget.setPlainText(new_text)
-            # 置換後、検索属性をリセット
+                file_editor.setPlainText(new_text)
             self.last_search_pattern = ""
             self.last_match_end = 0
 
@@ -231,13 +313,11 @@ class MainWindow(QMainWindow):
 
     def toggle_search_bar(self):
         """検索バーの表示/非表示を切り替える"""
-        current_widget = self.tab_manager.currentWidget()
-        if isinstance(current_widget, FileEditor):
-            if self.tool_bar.isVisible():
-                self.tool_bar.hide()
-            else:
-                self.tool_bar.show()
-                self.search_box.setFocus()
+        if self.tool_bar.isVisible():
+            self.tool_bar.hide()
+        else:
+            self.tool_bar.show()
+            self.search_box.setFocus()
 
     def wheelEvent(self, event):
         """ホイールイベントを処理して拡大・縮小を行う"""
