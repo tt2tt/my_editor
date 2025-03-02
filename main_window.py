@@ -1,7 +1,7 @@
 import sys
 import os
-from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QVBoxLayout, QWidget, QFileDialog
-from PySide6.QtGui import QAction
+from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QVBoxLayout, QWidget, QFileDialog, QToolBar, QLineEdit
+from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtCore import Qt
 from my_package.tab import TabManager
 from my_package.editor import FileEditor
@@ -15,6 +15,8 @@ class MainWindow(QMainWindow):
         self.apply_styles()
         self.create_menu_bar()
         self.create_tab_manager()
+        self.create_tool_bar()
+        self.create_shortcuts()
 
     def apply_styles(self):
         """スタイルシートを適用する"""
@@ -80,6 +82,51 @@ class MainWindow(QMainWindow):
 
         self.tab_manager = TabManager(self)
         layout.addWidget(self.tab_manager)
+
+    def create_tool_bar(self):
+        """ツールバーを作成する"""
+        self.tool_bar = QToolBar("Search Toolbar", self)
+        self.addToolBar(Qt.TopToolBarArea, self.tool_bar)
+
+        self.search_box = QLineEdit(self)
+        self.search_box.setPlaceholderText("検索...")
+        self.search_box.returnPressed.connect(self.search_text)
+        self.tool_bar.addWidget(self.search_box)
+        self.tool_bar.setMovable(False)
+        self.tool_bar.setFloatable(False)
+        self.tool_bar.hide()
+
+    def search_text(self):
+        """検索テキストをハイライトする"""
+        current_widget = self.tab_manager.currentWidget()
+        if isinstance(current_widget, FileEditor):
+            search_text = self.search_box.text()
+            if search_text:
+                cursor = current_widget.textCursor()
+                document = current_widget.document()
+                found_cursor = document.find(search_text, cursor)
+                if found_cursor.isNull():
+                    found_cursor = document.find(search_text)
+                if not found_cursor.isNull():
+                    current_widget.setTextCursor(found_cursor)
+            current_widget.setFocus()
+
+    def create_shortcuts(self):
+        """ショートカットを作成する"""
+        search_shortcut = QAction(self)
+        search_shortcut.setShortcut(QKeySequence("Ctrl+F"))
+        search_shortcut.triggered.connect(self.toggle_search_bar)
+        self.addAction(search_shortcut)
+
+    def toggle_search_bar(self):
+        """検索バーの表示/非表示を切り替える"""
+        current_widget = self.tab_manager.currentWidget()
+        if isinstance(current_widget, FileEditor):
+            if self.tool_bar.isVisible():
+                self.tool_bar.hide()
+            else:
+                self.tool_bar.show()
+                self.search_box.setFocus()
 
     def wheelEvent(self, event):
         """ホイールイベントを処理して拡大・縮小を行う"""
