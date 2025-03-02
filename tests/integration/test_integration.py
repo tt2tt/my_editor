@@ -99,3 +99,34 @@ def test_search_not_found_integration(main_window):
     main_window.search_text()
     final_position = editor.textCursor().position()
     assert final_position == initial_position
+
+def test_replace_integration(main_window):
+    """MainWindowでの置換機能の統合テスト（部分置換）"""
+    main_window.new_file()
+    editor = main_window.tab_manager.currentWidget()
+    # 初期テキストを設定
+    editor.setPlainText("Integration test: Hello world! This is a test.")
+    # 検索と選択
+    main_window.regex_checkbox.setChecked(False)
+    main_window.search_box.setText("world")
+    main_window.search_text()
+    # 置換操作（現在選択中を置換）
+    main_window.replace_box.setText("universe")
+    main_window.replace_text()
+    new_text = editor.toPlainText()
+    # "world" が "universe" に置き換わっているはず
+    assert "universe" in new_text and "world" not in new_text
+
+def test_replace_all_integration(main_window):
+    """MainWindowでの全置換機能の統合テスト"""
+    main_window.new_file()
+    editor = main_window.tab_manager.currentWidget()
+    # 複数箇所に同じ単語があるテキストを設定
+    editor.setPlainText("Integration test: Hello world! Hello world!")
+    # リテラル置換モードで全置換を実行
+    main_window.regex_checkbox.setChecked(False)
+    main_window.search_box.setText("world")
+    main_window.replace_box.setText("universe")
+    main_window.replace_all_text()
+    new_text = editor.toPlainText()
+    assert new_text == "Integration test: Hello universe! Hello universe!"

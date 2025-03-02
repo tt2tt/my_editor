@@ -1,7 +1,7 @@
 import sys
 import os
 import re
-from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QVBoxLayout, QWidget, QFileDialog, QToolBar, QLineEdit, QCheckBox
+from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QVBoxLayout, QWidget, QFileDialog, QToolBar, QLineEdit, QCheckBox, QPushButton
 from PySide6.QtGui import QAction, QKeySequence, QTextCursor
 from PySide6.QtCore import Qt
 from my_package.tab import TabManager
@@ -92,12 +92,27 @@ class MainWindow(QMainWindow):
         self.tool_bar = QToolBar("Search Toolbar", self)
         self.addToolBar(Qt.TopToolBarArea, self.tool_bar)
 
+        # 検索欄
         self.search_box = QLineEdit(self)
         self.search_box.setPlaceholderText("検索...")
         self.search_box.returnPressed.connect(self.search_text)
         self.tool_bar.addWidget(self.search_box)
         
-        # 正規表現利用の有無を切り替えるチェックボックスを追加
+        # 置換欄と置換ボタンを追加
+        self.replace_box = QLineEdit(self)
+        self.replace_box.setPlaceholderText("置換...")
+        self.tool_bar.addWidget(self.replace_box)
+        
+        self.replace_button = QPushButton("置換", self)
+        self.replace_button.clicked.connect(self.replace_text)
+        self.tool_bar.addWidget(self.replace_button)
+        
+        # 全置換ボタンを追加
+        self.replace_all_button = QPushButton("全置換", self)
+        self.replace_all_button.clicked.connect(self.replace_all_text)
+        self.tool_bar.addWidget(self.replace_all_button)
+        
+        # 正規表現利用の有無を切り替えるチェックボックス
         self.regex_checkbox = QCheckBox("正規表現", self)
         self.regex_checkbox.setChecked(False)
         self.tool_bar.addWidget(self.regex_checkbox)
@@ -148,6 +163,39 @@ class MainWindow(QMainWindow):
                         self.last_match_end = 0
             # 検索後は検索ボックスにフォーカスを戻す
             self.search_box.setFocus()
+
+    def replace_text(self):
+        """現在の選択部分を置換欄の内容で置換し、次のヒットを検索する"""
+        current_widget = self.tab_manager.currentWidget()
+        if isinstance(current_widget, FileEditor):
+            replacement = self.replace_box.text()
+            cursor = current_widget.textCursor()
+            if not cursor.selectedText() == "":
+                cursor.insertText(replacement)
+                # 置換後、次のヒットを検索する
+                self.search_text()
+
+    def replace_all_text(self):
+        """全置換機能：全ての検索対象を置換欄の内容で置換する"""
+        current_widget = self.tab_manager.currentWidget()
+        if isinstance(current_widget, FileEditor):
+            search_pattern = self.search_box.text()
+            replacement = self.replace_box.text()
+            if search_pattern:
+                original_text = current_widget.toPlainText()
+                new_text = ""
+                if self.regex_checkbox.isChecked():
+                    try:
+                        regex = re.compile(search_pattern, re.DOTALL)
+                        new_text = regex.sub(replacement, original_text)
+                    except re.error:
+                        return
+                else:
+                    new_text = original_text.replace(search_pattern, replacement)
+                current_widget.setPlainText(new_text)
+            # 置換後、検索属性をリセット
+            self.last_search_pattern = ""
+            self.last_match_end = 0
 
     def create_shortcuts(self):
         """ショートカットを作成する"""

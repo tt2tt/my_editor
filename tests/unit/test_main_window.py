@@ -155,3 +155,41 @@ def test_search_regex_invalid(main_window):
     current_pos_after = editor.textCursor().position()
     # 検索できなければカーソル位置は変わらない
     assert current_pos_after == current_pos_before
+
+def test_replace_text(main_window):
+    """置換テスト（現在の選択部分を置換する）"""
+    # 新しいファイルを作成し、内容を設定
+    main_window.new_file()
+    editor = main_window.tab_manager.currentWidget()
+    editor.setPlainText("Hello world! This is a test.")
+    # 検索: "world" を選択
+    cursor = editor.textCursor()
+    cursor.setPosition(0)
+    editor.setTextCursor(cursor)
+    if main_window.regex_checkbox.isChecked():
+        main_window.regex_checkbox.setChecked(False)
+    main_window.search_box.setText("world")
+    main_window.search_text()
+    # 置換: "world" -> "universe"
+    main_window.replace_box.setText("universe")
+    main_window.replace_text()
+    # 置換後、選択部分に "universe" が含まれるはず
+    cursor = editor.textCursor()
+    selected = cursor.selectedText()
+    assert "universe" in selected or "universe" in editor.toPlainText()
+
+def test_replace_all_text(main_window):
+    """全置換テスト：全ての検索対象を置換欄の内容で置換する"""
+    main_window.new_file()
+    editor = main_window.tab_manager.currentWidget()
+    # 複数箇所に "world" を配置
+    editor.setPlainText("Hello world! Hello world!")
+    # リテラル検索モード
+    if main_window.regex_checkbox.isChecked():
+        main_window.regex_checkbox.setChecked(False)
+    main_window.search_box.setText("world")
+    main_window.replace_box.setText("universe")
+    main_window.replace_all_text()
+    new_text = editor.toPlainText()
+    # 全置換されていることを確認
+    assert new_text == "Hello universe! Hello universe!"
