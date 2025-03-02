@@ -18,6 +18,7 @@ class MainWindow(QMainWindow):
         self.create_tab_manager()
         self.create_tool_bar()
         self.create_shortcuts()
+        self.setFocusPolicy(Qt.StrongFocus)  # 追加: ショートカットが発生するようフォーカスを明示的に要求
         # 新規属性：前回の検索パターンと最後のヒット位置
         self.last_search_pattern = ""
         self.last_match_end = 0
@@ -203,6 +204,12 @@ class MainWindow(QMainWindow):
         search_shortcut.setShortcut(QKeySequence("Ctrl+F"))
         search_shortcut.triggered.connect(self.toggle_search_bar)
         self.addAction(search_shortcut)
+		
+        # Ctrl+Sでファイルを保存するショートカット
+        save_shortcut = QAction(self)
+        save_shortcut.setShortcut(QKeySequence("Ctrl+S"))
+        save_shortcut.triggered.connect(self.save_file)
+        self.addAction(save_shortcut)
 
     def toggle_search_bar(self):
         """検索バーの表示/非表示を切り替える"""
