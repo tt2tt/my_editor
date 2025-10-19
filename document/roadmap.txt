@@ -1,0 +1,132 @@
+フェーズ0: 初期設計と共通基盤
+1. 設計ドキュメント作成 (`design/architecture.puml`)
+   - クラス図にModel (`FileModel`, `FolderModel`, `SettingsModel`), View (`MainWindow`, `EditorTab`, `FolderTree`, `ChatPanel`), Controller (`AppController`, `AIController`, `FileController`) を定義
+   - テスト: なし (設計のみ)
+2. ロギング基盤実装 (`logging_config.py`)
+   - 関数: `setup_logging(log_path: Path) -> logging.Logger`
+   - 全コンポーネントで共通ロガーを取得できるようにする
+   - テスト: `tests/test_logging_config.py::test_setup_logging_creates_file`
+3. 共通例外クラス定義 (`exceptions.py`)
+   - クラス: `EditorError`, `FileOperationError`, `AIIntegrationError`
+   - 関数: `raise_with_context(message: str, original: Exception | None)
+   - テスト: `tests/test_exceptions.py::test_raise_with_context_wraps`
+4. 設定管理基盤 (`settings/model.py`)
+   - クラス: `SettingsModel`
+   - 関数: `load_settings()`, `save_settings(data: dict)`, `get_api_key()`, `set_api_key(key: str)`
+   - テスト: `tests/settings/test_model.py::test_set_and_get_api_key`
+
+フェーズ1: MVC骨格とアプリ起動
+5. MVC初期骨格 (`main.py`, `controllers/app_controller.py`, `views/main_window.py`)
+   - 関数: `main()`, `AppController.__init__`, `AppController.start()`, `MainWindow.__init__`
+   - QDarkStyle適用とメインウィンドウ生成
+   - テスト: `tests/test_main.py::test_main_creates_app`
+6. イベントディスパッチ基盤 (`controllers/event_bus.py`)
+   - クラス: `EventBus`
+   - 関数: `subscribe(event: str, handler)`, `publish(event: str, payload: dict | None)`
+   - テスト: `tests/controllers/test_event_bus.py::test_publish_triggers_handler`
+
+フェーズ2: モデル層のファイル/フォルダ操作
+7. ファイルモデル (`models/file_model.py`)
+   - 関数: `load_file(path: Path)`, `save_file(path: Path, content: str)`, `list_open_files()`
+   - テスト: `tests/models/test_file_model.py::test_load_and_save`
+8. フォルダモデル (`models/folder_model.py`)
+   - 関数: `list_directory(path: Path)`, `create_item(path: Path, is_dir: bool)`, `delete_item(path: Path)`
+   - テスト: `tests/models/test_folder_model.py::test_create_and_delete`
+9. タブ状態モデル (`models/tab_model.py`)
+   - クラス: `TabState`
+   - 関数: `add_tab(file_path: Path)`, `mark_dirty(tab_id: str, dirty: bool)`, `close_tab(tab_id: str)`
+   - テスト: `tests/models/test_tab_model.py::test_mark_dirty`
+
+フェーズ3: ビュー層構築
+10. メインウィンドウ枠組み (`views/main_window.py`)
+	- 関数: `MainWindow._build_layout()`, `MainWindow._connect_signals()`
+	- テスト: GUIスモークテスト `tests/views/test_main_window.py::test_main_window_initializes`
+11. タブビュー (`views/editor_tab_widget.py`)
+	- クラス: `EditorTabWidget`
+	- 関数: `add_editor_tab(file_path: Path, content: str)`, `set_dirty(tab_index: int, dirty: bool)`, `get_current_editor()`
+	- QScintilla or QPlainTextEditで行番号表示対応
+	- テスト: `tests/views/test_editor_tab_widget.py::test_set_dirty_marks_tab`
+12. フォルダツリービュー (`views/folder_tree.py`)
+	- 関数: `populate(model_data: list[FolderNode])`, `on_item_double_clicked()`
+	- テスト: `tests/views/test_folder_tree.py::test_populate_sets_items`
+13. チャットパネルビュー (`views/chat_panel.py`)
+	- 関数: `append_user_message(text: str)`, `append_ai_message(text: str)`, `request_ai_completion()`
+	- テスト: `tests/views/test_chat_panel.py::test_append_messages`
+
+フェーズ4: コントローラ層の実装
+14. ファイルコントローラ (`controllers/file_controller.py`)
+	- 関数: `open_file(path: Path)`, `save_current_file()`, `save_file_as(path: Path)`
+	- モデル呼び出しとビュー更新を制御
+	- テスト: `tests/controllers/test_file_controller.py::test_open_file_updates_tab`
+15. フォルダコントローラ (`controllers/folder_controller.py`)
+	- 関数: `load_initial_tree(path: Path)`, `handle_create(path: Path, is_dir: bool)`, `handle_delete(path: Path)`
+	- テスト: `tests/controllers/test_folder_controller.py::test_handle_create`
+16. タブコントローラ (`controllers/tab_controller.py`)
+	- 関数: `create_tab(path: Path, content: str)`, `mark_current_dirty(status: bool)`, `close_tab(tab_id: str)`
+	- テスト: `tests/controllers/test_tab_controller.py::test_mark_dirty`
+17. AIコントローラ (`controllers/ai_controller.py`)
+	- 関数: `generate_code(prompt: str)`, `stream_chat(prompt: str)`
+	- OpenAI API呼び出しと例外処理
+	- テスト: `tests/controllers/test_ai_controller.py::test_generate_code_handles_error` (モック)
+
+フェーズ5: 機能連携
+18. シグナル接続 (`controllers/app_controller.py`)
+	- 関数: `AppController._wire_events()`
+	- タブ変更、フォルダ選択、保存イベントをEventBus経由で結合
+	- テスト: `tests/controllers/test_app_controller.py::test_wire_events`
+19. 未保存フラグ更新 (`controllers/file_controller.py`)
+	- 関数: `on_editor_text_changed()`
+	- ビューからのsignalでTabModelを更新しマーク表示
+	- テスト: `tests/controllers/test_file_controller.py::test_on_editor_text_changed_sets_dirty`
+20. 行番号とズーム (`views/editor_widget.py`)
+	- クラス: `EditorWidget`
+	- 関数: `EditorWidget._init_line_numbers()`, `EditorWidget.wheelEvent(event)`でCtrl+スクロール検知
+	- テスト: `tests/views/test_editor_widget.py::test_wheel_event_zoom`
+21. フォルダツリーファイル操作 (`views/folder_tree.py` + `controllers/folder_controller.py`)
+	- 関数: `FolderTree._show_context_menu()`, `FolderController._apply_context_action()`
+	- テスト: `tests/controllers/test_folder_controller.py::test_apply_context_action`
+
+フェーズ6: コーディングサポート統合
+22. OpenAI設定画面 (`views/settings_dialog.py`)
+	- 関数: `SettingsDialog.__init__`, `SettingsDialog._bind_actions()`
+	- テスト: `tests/views/test_settings_dialog.py::test_save_triggers_model`
+23. APIキー永続化 (`controllers/settings_controller.py`)
+	- 関数: `load_settings_into_dialog()`, `save_settings_from_dialog()`
+	- QSettings利用で暗号化ストレージ検討
+	- テスト: `tests/controllers/test_settings_controller.py::test_save_settings_calls_model`
+24. チャット連携 (`controllers/ai_controller.py`)
+	- 関数: `handle_chat_submit(message: str)`
+	- ビュー更新とAPIレスポンス整形
+	- テスト: `tests/controllers/test_ai_controller.py::test_handle_chat_submit`
+
+フェーズ7: エラーハンドリングとログ整備
+25. グローバル例外ハンドラ (`main.py`)
+	- 関数: `install_exception_hook()`
+	- ログ出力とユーザ通知
+	- テスト: `tests/test_main.py::test_exception_hook_logs`
+26. 操作ログ (`logging/handlers.py`)
+	- 関数: `attach_gui_handler(window)`, `log_user_action(action: str, detail: dict)`
+	- テスト: `tests/logging/test_handlers.py::test_log_user_action`
+
+フェーズ8: CI/CD・ビルド
+27. テストスイート統合 (`pytest.ini`)
+	- 関数/設定: `python -m pytest` 実行用設定
+	- テスト: なし (設定)
+28. 型チェック (`mypy.ini`) と `mypy` 対応
+	- 全関数への型注釈確認
+	- テスト: CIで `mypy` 実行
+29. GitHub Actions CI構築 (`.github/workflows/ci.yml`)
+	- develop: テスト, mypy, pyinstallerビルドによるデプロイ
+	- main: 上記 + GitHub Releasesアップロード
+	- テスト: リンター `tests/ci/test_workflow_syntax.py` でバリデーション
+30. PyInstallerビルドスクリプト (`scripts/build_exe.py`)
+	- 関数: `build_windows_exe()`
+	- テスト: `tests/scripts/test_build_exe.py::test_build_command`
+
+フェーズ9: QAと仕上げ
+31. UATシナリオ定義 (`tests/manual/uat_checklist.md`)
+	- テスト: 手動
+32. 進捗更新 (`document/progress.txt`)
+	- 各タスク完了時に〇でチェック
+33. ドキュメント整理 (`README.md`, `USAGE.md`)
+	- 関数: なし
