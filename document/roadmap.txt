@@ -1,5 +1,5 @@
 フェーズ0: 初期設計と共通基盤
-1. 設計ドキュメント作成 (`design/architecture.puml`)
+1. [済] 設計ドキュメント作成 (`design/architecture.puml`)
    - クラス図にModel (`FileModel`, `FolderModel`, `SettingsModel`), View (`MainWindow`, `EditorTab`, `FolderTree`, `ChatPanel`), Controller (`AppController`, `AIController`, `FileController`) を定義
    - テスト: なし (設計のみ)
 2. ロギング基盤実装 (`logging_config.py`)

@@ -1,0 +1,2 @@
+フェーズ0
+1. 設計ドキュメント作成 (`design/architecture.puml`) 〇 2025-10-20 完了
