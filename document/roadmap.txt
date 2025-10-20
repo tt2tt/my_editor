@@ -2,7 +2,7 @@
 1. [済] 設計ドキュメント作成 (`design/architecture.puml`)
    - クラス図にModel (`FileModel`, `FolderModel`, `SettingsModel`), View (`MainWindow`, `EditorTab`, `FolderTree`, `ChatPanel`), Controller (`AppController`, `AIController`, `FileController`) を定義
    - テスト: なし (設計のみ)
-2. ロギング基盤実装 (`logging_config.py`)
+2. [済] ロギング基盤実装 (`logging_config.py`)
    - 関数: `setup_logging(log_path: Path) -> logging.Logger`
    - 全コンポーネントで共通ロガーを取得できるようにする
    - テスト: `tests/test_logging_config.py::test_setup_logging_creates_file`
