@@ -6,10 +6,10 @@
    - 関数: `setup_logging(log_path: Path) -> logging.Logger`
    - 全コンポーネントで共通ロガーを取得できるようにする
    - テスト: `tests/test_logging_config.py::test_setup_logging_creates_file`
-3. 共通例外クラス定義 (`exceptions.py`)
-   - クラス: `EditorError`, `FileOperationError`, `AIIntegrationError`
-   - 関数: `raise_with_context(message: str, original: Exception | None)
-   - テスト: `tests/test_exceptions.py::test_raise_with_context_wraps`
+3. [済] 共通例外クラス定義 (`exceptions.py`)
+	- クラス: `EditorError`, `FileOperationError`, `AIIntegrationError`
+	- 関数: `raise_with_context(message: str, original: Exception | None)`
+	- テスト: `tests/test_exceptions.py::test_raise_with_context_wraps`
 4. 設定管理基盤 (`settings/model.py`)
    - クラス: `SettingsModel`
    - 関数: `load_settings()`, `save_settings(data: dict)`, `get_api_key()`, `set_api_key(key: str)`
