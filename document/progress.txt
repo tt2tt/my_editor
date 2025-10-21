@@ -2,3 +2,4 @@
 1. 設計ドキュメント作成 (`design/architecture.puml`) 〇 2025-10-20 完了
 2. ロギング基盤実装 (`logging_config.py`) 〇 2025-10-20 完了
 3. 共通例外クラス定義 (`exceptions.py`) 〇 2025-10-21 完了
+4. 設定管理基盤 (`settings/model.py`) 〇 2025-10-21 完了

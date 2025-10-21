@@ -10,10 +10,10 @@
 	- クラス: `EditorError`, `FileOperationError`, `AIIntegrationError`
 	- 関数: `raise_with_context(message: str, original: Exception | None)`
 	- テスト: `tests/test_exceptions.py::test_raise_with_context_wraps`
-4. 設定管理基盤 (`settings/model.py`)
-   - クラス: `SettingsModel`
-   - 関数: `load_settings()`, `save_settings(data: dict)`, `get_api_key()`, `set_api_key(key: str)`
-   - テスト: `tests/settings/test_model.py::test_set_and_get_api_key`
+4. [済] 設定管理基盤 (`settings/model.py`)
+	- クラス: `SettingsModel`
+	- 関数: `load_settings()`, `save_settings(data: dict)`, `get_api_key()`, `set_api_key(key: str)`
+	- テスト: `tests/settings/test_model.py::test_set_and_get_api_key`
 
 フェーズ1: MVC骨格とアプリ起動
 5. MVC初期骨格 (`main.py`, `controllers/app_controller.py`, `views/main_window.py`)
