@@ -112,7 +112,7 @@
 27. [済]  テストスイート統合 (`pytest.ini`)
 	- 関数/設定: `python -m pytest` 実行用設定
 	- テスト: なし (設定)
-28. 型チェック (`mypy.ini`) と `mypy` 対応
+28. [済] 型チェック (`mypy.ini`) と `mypy` 対応
 	- 全関数への型注釈確認
 	- テスト: CIで `mypy` 実行
 29. GitHub Actions CI構築 (`.github/workflows/ci.yml`)

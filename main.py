@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import sys
 from pathlib import Path
-from typing import Sequence
+from typing import Sequence, cast
 
 from PySide6.QtWidgets import QApplication
 
@@ -23,7 +23,7 @@ def _create_application(argv: Sequence[str] | None) -> tuple[QApplication, bool]
     # 既存インスタンスがあれば再利用する。
     existing = QApplication.instance()
     if existing is not None:
-        return existing, False
+        return cast(QApplication, existing), False
 
     # 新規にアプリケーションを生成する。
     app = QApplication(list(argv) if argv is not None else sys.argv)

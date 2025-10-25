@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 SETTINGS_FILE = Path.home() / ".my_editor" / "settings.json"
 
@@ -30,7 +30,7 @@ class SettingsModel:
             return {}
 
         with self._storage_path.open("r", encoding="utf-8") as fp:
-            return json.load(fp)
+            return cast(Dict[str, Any], json.load(fp))
 
     def save_settings(self, data: Dict[str, Any]) -> None:
         """設定データをファイルへ書き込む。
