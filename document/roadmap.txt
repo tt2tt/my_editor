@@ -109,7 +109,7 @@
 	- テスト: `tests/logging/test_handlers.py::test_log_user_action`
 
 フェーズ8: CI/CD・ビルド
-27. テストスイート統合 (`pytest.ini`)
+27. [済]  テストスイート統合 (`pytest.ini`)
 	- 関数/設定: `python -m pytest` 実行用設定
 	- テスト: なし (設定)
 28. 型チェック (`mypy.ini`) と `mypy` 対応
