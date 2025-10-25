@@ -20,7 +20,7 @@
    - 関数: `main()`, `AppController.__init__`, `AppController.start()`, `MainWindow.__init__`
    - QDarkStyle適用とメインウィンドウ生成
    - テスト: `tests/test_main.py::test_main_creates_app`
-6. イベントディスパッチ基盤 (`controllers/event_bus.py`)
+6. [済] イベントディスパッチ基盤 (`controllers/event_bus.py`)
    - クラス: `EventBus`
    - 関数: `subscribe(event: str, handler)`, `publish(event: str, payload: dict | None)`
    - テスト: `tests/controllers/test_event_bus.py::test_publish_triggers_handler`

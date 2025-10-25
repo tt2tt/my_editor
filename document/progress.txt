@@ -5,3 +5,4 @@
 4. 設定管理基盤 (`settings/model.py`) 〇 2025-10-21 完了
 フェーズ1
 5. MVC初期骨格 (`main.py`, `controllers/app_controller.py`, `views/main_window.py`) 〇 2025-10-21 完了
+6. イベントディスパッチ基盤 (`controllers/event_bus.py`) 〇 2025-10-25 完了
