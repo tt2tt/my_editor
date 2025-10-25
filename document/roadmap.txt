@@ -119,9 +119,9 @@
 	- develop: テスト, mypy, pyinstallerビルドによるデプロイ
 	- main: 上記 + GitHub Releasesアップロード
 	- テスト: リンター `tests/ci/test_workflow_syntax.py` でバリデーション
-30. PyInstallerビルドスクリプト (`scripts/build_exe.py`)
+30. [済] PyInstallerビルドスクリプト (`scripts/build_exe.py`)
 	- 関数: `build_windows_exe()`
-	- テスト: `tests/scripts/test_build_exe.py::test_build_command`
+	- テスト: `tests/scripts/test_build_exe.py::test_build_windows_exe_invokes_pyinstaller_default_paths`
 
 フェーズ9: QAと仕上げ
 31. UATシナリオ定義 (`tests/manual/uat_checklist.md`)

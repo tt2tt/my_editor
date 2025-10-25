@@ -44,7 +44,7 @@ jobs:
       - name: Build executable
         # PyInstallerでWindows用実行ファイルを生成する。
         run: |
-          pyinstaller main.py --name my_editor --noconfirm --onefile --windowed
+          python -m scripts.build_exe main.py --name my_editor
 
       - name: Upload build artifact
         if: always()

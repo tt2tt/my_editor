@@ -9,3 +9,4 @@
 フェーズ8
 28. 型チェック (`mypy.ini`) と `mypy` 対応 〇 2025-10-25 完了
 29. GitHub Actions CI構築 (`.github/workflows/ci.yml`) 〇 2025-10-25 完了
+30. PyInstallerビルドスクリプト (`scripts/build_exe.py`) 〇 2025-10-25 完了
