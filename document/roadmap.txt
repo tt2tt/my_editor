@@ -115,7 +115,7 @@
 28. [済] 型チェック (`mypy.ini`) と `mypy` 対応
 	- 全関数への型注釈確認
 	- テスト: CIで `mypy` 実行
-29. GitHub Actions CI構築 (`.github/workflows/ci.yml`)
+29. [済] GitHub Actions CI構築 (`.github/workflows/ci.yml`)
 	- develop: テスト, mypy, pyinstallerビルドによるデプロイ
 	- main: 上記 + GitHub Releasesアップロード
 	- テスト: リンター `tests/ci/test_workflow_syntax.py` でバリデーション

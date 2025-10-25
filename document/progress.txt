@@ -8,3 +8,4 @@
 6. イベントディスパッチ基盤 (`controllers/event_bus.py`) 〇 2025-10-25 完了
 フェーズ8
 28. 型チェック (`mypy.ini`) と `mypy` 対応 〇 2025-10-25 完了
+29. GitHub Actions CI構築 (`.github/workflows/ci.yml`) 〇 2025-10-25 完了
