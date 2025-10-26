@@ -48,8 +48,8 @@ package "View" {
   }
 
   class FolderTree {
-    +render(nodes: list): None
-    +request_open(path: Path): None
+    +populate(nodes: list): None
+    +select_path(path: Path): None
   }
 
   class ChatPanel {
