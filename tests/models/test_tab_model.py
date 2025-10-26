@@ -59,3 +59,15 @@ def test_mark_dirty_unknown_tab_raises() -> None:
 
     with pytest.raises(KeyError):
         state.mark_dirty("missing", True)
+
+
+def test_update_path_changes_file_path(tmp_path: Path) -> None:
+    """update_pathでファイルパスが更新されることを検証する。"""
+    state = TabState()
+    original = tmp_path / "before.txt"
+    new_path = tmp_path / "after.txt"
+
+    tab_id = state.add_tab(original)
+    state.update_path(tab_id, new_path)
+
+    assert state.get_file_path(tab_id) == new_path.resolve()

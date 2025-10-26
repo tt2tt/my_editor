@@ -54,17 +54,17 @@
 	- テスト: `tests/views/test_chat_panel.py::test_append_messages`
 
 フェーズ4: コントローラ層の実装
-14. ファイルコントローラ (`controllers/file_controller.py`)
+14. [済] ファイルコントローラ (`controllers/file_controller.py`)
 	- 関数: `open_file(path: Path)`, `save_current_file()`, `save_file_as(path: Path)`
 	- モデル呼び出しとビュー更新を制御
 	- テスト: `tests/controllers/test_file_controller.py::test_open_file_updates_tab`
-15. フォルダコントローラ (`controllers/folder_controller.py`)
+15. [済] フォルダコントローラ (`controllers/folder_controller.py`)
 	- 関数: `load_initial_tree(path: Path)`, `handle_create(path: Path, is_dir: bool)`, `handle_delete(path: Path)`
 	- テスト: `tests/controllers/test_folder_controller.py::test_handle_create`
-16. タブコントローラ (`controllers/tab_controller.py`)
+16. [済] タブコントローラ (`controllers/tab_controller.py`)
 	- 関数: `create_tab(path: Path, content: str)`, `mark_current_dirty(status: bool)`, `close_tab(tab_id: str)`
 	- テスト: `tests/controllers/test_tab_controller.py::test_mark_dirty`
-17. AIコントローラ (`controllers/ai_controller.py`)
+17. [済] AIコントローラ (`controllers/ai_controller.py`)
 	- 関数: `generate_code(prompt: str)`, `stream_chat(prompt: str)`
 	- OpenAI API呼び出しと例外処理
 	- テスト: `tests/controllers/test_ai_controller.py::test_generate_code_handles_error` (モック)

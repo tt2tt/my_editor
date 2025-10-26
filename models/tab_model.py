@@ -56,6 +56,13 @@ class TabState:
         """タブに紐づくファイルパスを取得する。"""
         return self._get_entry(tab_id).file_path
 
+    def update_path(self, tab_id: str, new_path: Path) -> None:
+        """タブに紐づくファイルパスを更新する。"""
+        entry = self._get_entry(tab_id)
+        resolved = new_path.expanduser().resolve(strict=False)
+        entry.file_path = resolved
+        self._logger.info("タブのパスを更新しました: id=%s path=%s", tab_id, resolved)
+
     def _get_entry(self, tab_id: str) -> TabEntry:
         """内部で利用するタブ情報取得ヘルパー。"""
         try:
