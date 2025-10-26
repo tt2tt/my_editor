@@ -78,7 +78,7 @@
 	- 関数: `on_editor_text_changed()`
 	- ビューからのsignalでTabModelを更新しマーク表示
 	- テスト: `tests/controllers/test_file_controller.py::test_on_editor_text_changed_sets_dirty`
-20. 行番号とズーム (`views/editor_widget.py`)
+20. [済] 行番号とズーム (`views/editor_widget.py`)
 	- クラス: `EditorWidget`
 	- 関数: `EditorWidget._init_line_numbers()`, `EditorWidget.wheelEvent(event)`でCtrl+スクロール検知
 	- テスト: `tests/views/test_editor_widget.py::test_wheel_event_zoom`

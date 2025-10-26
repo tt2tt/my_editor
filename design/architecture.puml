@@ -44,7 +44,13 @@ package "View" {
   class EditorTabWidget {
     +add_editor_tab(file_path: Path, content: str): int
     +set_dirty(tab_index: int, dirty: bool): None
-    +get_current_editor(): QPlainTextEdit
+    +get_current_editor(): EditorWidget
+  }
+
+  class EditorWidget {
+    +current_zoom_level: int
+    -_init_line_numbers(): None
+    +wheelEvent(event: QWheelEvent): None
   }
 
   class FolderTree {
@@ -107,6 +113,7 @@ FolderController --> FolderModel : uses
 FolderController --> FolderTree : updates
 TabController --> TabState : updates
 TabController --> EditorTabWidget : updates
+EditorTabWidget o-- EditorWidget : owns
 
 AIController --> ChatPanel : updates
 AIController --> SettingsModel : reads/writes

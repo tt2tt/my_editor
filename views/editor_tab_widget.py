@@ -5,7 +5,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtWidgets import QPlainTextEdit, QTabWidget, QWidget
+from PySide6.QtWidgets import QTabWidget, QWidget
+
+from views.editor_widget import EditorWidget
 
 
 @dataclass
@@ -31,7 +33,7 @@ class EditorTabWidget(QTabWidget):
     def add_editor_tab(self, file_path: Path, content: str) -> int:
         """ファイル内容を表示するタブを追加する。"""
         # エディタウィジェットを生成して内容を読み込む。
-        editor = QPlainTextEdit(self)
+        editor = EditorWidget(self)
         editor.setPlainText(content)
         editor.document().setModified(False)
 
@@ -54,7 +56,7 @@ class EditorTabWidget(QTabWidget):
         display_title = f"{metadata.title}*" if dirty else metadata.title
         self.setTabText(tab_index, display_title)
 
-        if isinstance(editor, QPlainTextEdit):
+        if isinstance(editor, EditorWidget):
             editor.document().setModified(dirty)
 
         metadata.is_dirty = dirty
@@ -72,10 +74,10 @@ class EditorTabWidget(QTabWidget):
         self.setTabToolTip(tab_index, str(resolved))
         self._logger.info("タブのパスを更新しました: index=%s path=%s", tab_index, resolved)
 
-    def get_current_editor(self) -> Optional[QPlainTextEdit]:
+    def get_current_editor(self) -> Optional[EditorWidget]:
         """現在アクティブなエディタウィジェットを返す。"""
         widget = self.currentWidget()
-        if isinstance(widget, QPlainTextEdit):
+        if isinstance(widget, EditorWidget):
             return widget
         return None
 
