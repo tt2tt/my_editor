@@ -77,6 +77,12 @@ package "Controller" {
     +handle_delete(path: Path): None
   }
 
+  class TabController {
+    +create_tab(path: Path, content: str): str
+    +mark_current_dirty(status: bool): None
+    +close_tab(tab_id: str): None
+  }
+
   class AIController {
     +generate_code(prompt: str): str
     +handle_chat_submit(message: str): None
@@ -93,6 +99,8 @@ FileController --> EditorTabWidget : updates
 FileController --> FolderModel : queries
 FolderController --> FolderModel : uses
 FolderController --> FolderTree : updates
+TabController --> TabState : updates
+TabController --> EditorTabWidget : updates
 
 AIController --> ChatPanel : updates
 AIController --> SettingsModel : reads/writes

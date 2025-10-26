@@ -61,7 +61,7 @@
 15. [済] フォルダコントローラ (`controllers/folder_controller.py`)
 	- 関数: `load_initial_tree(path: Path)`, `handle_create(path: Path, is_dir: bool)`, `handle_delete(path: Path)`
 	- テスト: `tests/controllers/test_folder_controller.py::test_handle_create`
-16. タブコントローラ (`controllers/tab_controller.py`)
+16. [済] タブコントローラ (`controllers/tab_controller.py`)
 	- 関数: `create_tab(path: Path, content: str)`, `mark_current_dirty(status: bool)`, `close_tab(tab_id: str)`
 	- テスト: `tests/controllers/test_tab_controller.py::test_mark_dirty`
 17. AIコントローラ (`controllers/ai_controller.py`)
