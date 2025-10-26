@@ -41,20 +41,21 @@ package "View" {
     -_connect_signals(): None
   }
 
-  class EditorTab {
-    +display_content(text: str): None
-    +mark_dirty(is_dirty: bool): None
+  class EditorTabWidget {
+    +add_editor_tab(file_path: Path, content: str): int
+    +set_dirty(tab_index: int, dirty: bool): None
+    +get_current_editor(): QPlainTextEdit
   }
 
   class FolderTree {
-    +render(nodes: list): None
-    +request_open(path: Path): None
+    +populate(nodes: list): None
+    +select_path(path: Path): None
   }
 
   class ChatPanel {
-    +append_user_message(message: str): None
-    +append_ai_message(message: str): None
-    +request_completion(prompt: str): None
+    +append_user_message(text: str): None
+    +append_ai_message(text: str): None
+    +request_ai_completion(): None
   }
 }
 
@@ -82,19 +83,19 @@ AppController --> AIController : coordinates
 AppController --> SettingsModel : uses
 
 FileController --> FileModel : uses
-FileController --> EditorTab : updates
+FileController --> EditorTabWidget : updates
 FileController --> FolderModel : queries
 
 AIController --> ChatPanel : updates
 AIController --> SettingsModel : reads/writes
 AIController --> FileModel : optional_context
 
-MainWindow o-- EditorTab : owns
+MainWindow o-- EditorTabWidget : owns
 MainWindow o-- FolderTree : owns
 MainWindow o-- ChatPanel : owns
 
 FolderTree --> AppController : notifies
-EditorTab --> FileController : emits_dirty
+EditorTabWidget --> FileController : emits_dirty
 ChatPanel --> AIController : submits_prompt
 
 @enduml
