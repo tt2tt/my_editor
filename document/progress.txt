@@ -9,6 +9,7 @@
 フェーズ2
 7. ファイルモデル (`models/file_model.py`) 〇 2025-10-26 完了
 8. フォルダモデル (`models/folder_model.py`) 〇 2025-10-26 完了
+9. タブ状態モデル (`models/tab_model.py`) 〇 2025-10-26 完了
 フェーズ8
 28. 型チェック (`mypy.ini`) と `mypy` 対応 〇 2025-10-25 完了
 29. GitHub Actions CI構築 (`.github/workflows/ci.yml`) 〇 2025-10-25 完了

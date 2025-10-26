@@ -32,10 +32,10 @@
 8. [済] フォルダモデル (`models/folder_model.py`)
 	- 関数: `list_directory(path: Path)`, `create_item(path: Path, is_dir: bool)`, `delete_item(path: Path)`
 	- テスト: `tests/models/test_folder_model.py::test_create_item_creates_file_and_directory`
-9. タブ状態モデル (`models/tab_model.py`)
-   - クラス: `TabState`
-   - 関数: `add_tab(file_path: Path)`, `mark_dirty(tab_id: str, dirty: bool)`, `close_tab(tab_id: str)`
-   - テスト: `tests/models/test_tab_model.py::test_mark_dirty`
+9. [済] タブ状態モデル (`models/tab_model.py`)
+	- クラス: `TabState`
+	- 関数: `add_tab(file_path: Path)`, `mark_dirty(tab_id: str, dirty: bool)`, `close_tab(tab_id: str)`
+	- テスト: `tests/models/test_tab_model.py::test_mark_dirty_updates_state`
 
 フェーズ3: ビュー層構築
 10. メインウィンドウ枠組み (`views/main_window.py`)

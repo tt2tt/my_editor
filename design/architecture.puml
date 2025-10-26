@@ -20,6 +20,12 @@ package "Model" {
     +delete_item(path: Path): None
   }
 
+  class TabState {
+    +add_tab(file_path: Path): str
+    +mark_dirty(tab_id: str, dirty: bool): None
+    +close_tab(tab_id: str): None
+  }
+
   class SettingsModel {
     +load_settings(): dict
     +save_settings(data: dict): None
