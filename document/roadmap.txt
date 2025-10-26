@@ -26,9 +26,9 @@
    - テスト: `tests/controllers/test_event_bus.py::test_publish_triggers_handler`
 
 フェーズ2: モデル層のファイル/フォルダ操作
-7. ファイルモデル (`models/file_model.py`)
-   - 関数: `load_file(path: Path)`, `save_file(path: Path, content: str)`, `list_open_files()`
-   - テスト: `tests/models/test_file_model.py::test_load_and_save`
+7. [済] ファイルモデル (`models/file_model.py`)
+	- 関数: `load_file(path: Path)`, `save_file(path: Path, content: str)`, `list_open_files()`
+	- テスト: `tests/models/test_file_model.py::test_load_and_save`
 8. フォルダモデル (`models/folder_model.py`)
    - 関数: `list_directory(path: Path)`, `create_item(path: Path, is_dir: bool)`, `delete_item(path: Path)`
    - テスト: `tests/models/test_folder_model.py::test_create_and_delete`

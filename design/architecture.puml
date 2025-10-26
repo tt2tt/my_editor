@@ -11,6 +11,7 @@ package "Model" {
   class FileModel {
     +load_file(path: Path): str
     +save_file(path: Path, content: str): None
+    +list_open_files(): list
   }
 
   class FolderModel {
