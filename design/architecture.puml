@@ -85,7 +85,7 @@ package "Controller" {
 
   class AIController {
     +generate_code(prompt: str): str
-    +handle_chat_submit(message: str): None
+    +stream_chat(prompt: str): Iterable
   }
 }
 
