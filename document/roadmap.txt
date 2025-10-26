@@ -58,7 +58,7 @@
 	- 関数: `open_file(path: Path)`, `save_current_file()`, `save_file_as(path: Path)`
 	- モデル呼び出しとビュー更新を制御
 	- テスト: `tests/controllers/test_file_controller.py::test_open_file_updates_tab`
-15. フォルダコントローラ (`controllers/folder_controller.py`)
+15. [済] フォルダコントローラ (`controllers/folder_controller.py`)
 	- 関数: `load_initial_tree(path: Path)`, `handle_create(path: Path, is_dir: bool)`, `handle_delete(path: Path)`
 	- テスト: `tests/controllers/test_folder_controller.py::test_handle_create`
 16. タブコントローラ (`controllers/tab_controller.py`)
