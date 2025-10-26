@@ -120,3 +120,47 @@ def test_on_editor_text_changed_sets_dirty(qt_app: QApplication, tmp_path: Path)
 
     assert state.is_dirty(tab_id) is True
     assert tab_widget.tabText(index) == f"{file_path.name}*"
+
+
+def test_close_current_tab_removes_state(qt_app: QApplication, tmp_path: Path) -> None:
+    """close_current_tabでタブと関連状態が破棄されることを検証する。"""
+    file_path = tmp_path / "close.txt"
+    file_path.write_text("content", encoding="utf-8")
+
+    model = FileModel()
+    state = TabState()
+    tab_widget = EditorTabWidget()
+    controller = FileController(model, state, tab_widget)
+
+    index = controller.open_file(file_path)
+    editor = tab_widget.widget(index)
+    assert isinstance(editor, QPlainTextEdit)
+    tab_id = controller._tab_id_by_editor[editor]
+
+    closed_path = controller.close_current_tab()
+
+    assert closed_path == file_path.resolve()
+    assert tab_widget.count() == 0
+    assert editor not in controller._tab_id_by_editor
+    with pytest.raises(KeyError):
+        state.get_file_path(tab_id)
+
+
+def test_tab_close_signal_invokes_controller(qt_app: QApplication, tmp_path: Path) -> None:
+    """タブのクローズボタン操作でコントローラが状態を更新することを検証する。"""
+    file_path = tmp_path / "signal.txt"
+    file_path.write_text("body", encoding="utf-8")
+
+    model = FileModel()
+    state = TabState()
+    tab_widget = EditorTabWidget()
+    controller = FileController(model, state, tab_widget)
+
+    index = controller.open_file(file_path)
+    editor = tab_widget.widget(index)
+    assert isinstance(editor, QPlainTextEdit)
+
+    tab_widget.tabCloseRequested.emit(index)
+
+    assert tab_widget.count() == 0
+    assert editor not in controller._tab_id_by_editor

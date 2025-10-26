@@ -37,10 +37,13 @@ class FileModel:
 
         # ファイルを読み込み、失敗時はアプリ共通例外へ変換する。
         try:
-            content = resolved_path.read_text(encoding=encoding)
+            content = self._read_text_with_fallback(resolved_path, encoding)
         except OSError as exc:
             self._logger.error("ファイルの読み込みに失敗しました: %s", resolved_path, exc_info=exc)
             raise FileOperationError(f"ファイルの読み込みに失敗しました: {resolved_path}") from exc
+        except UnicodeDecodeError as exc:
+            self._logger.error("サポートされていないエンコーディングです: %s", resolved_path, exc_info=exc)
+            raise FileOperationError(f"ファイルのデコードに失敗しました: {resolved_path}") from exc
 
         # 正常に読み込めた場合は開いているファイル一覧へ追加する。
         self._register_open_file(resolved_path)
@@ -80,4 +83,26 @@ class FileModel:
     def _register_open_file(self, path: Path) -> None:
         """開いているファイル集合へパスを登録する。"""
         self._open_files.add(path)
+
+    def _read_text_with_fallback(self, path: Path, primary_encoding: str) -> str:
+        """可能なエンコーディングを順に試してテキストを読み込む。"""
+        candidates = [primary_encoding, "utf-8-sig", "utf-16", "utf-16-le", "utf-16-be", "cp932"]
+        tried: set[str] = set()
+
+        for encoding in candidates:
+            if encoding in tried:
+                continue
+            tried.add(encoding)
+            try:
+                return path.read_text(encoding=encoding)
+            except UnicodeDecodeError as exc:
+                self._logger.debug(
+                    "エンコーディングの判定に失敗しました: path=%s encoding=%s",
+                    path,
+                    encoding,
+                    exc_info=exc,
+                )
+                continue
+
+        raise UnicodeDecodeError(primary_encoding, b"", 0, 0, "デコード可能なエンコーディングが見つかりません")
 

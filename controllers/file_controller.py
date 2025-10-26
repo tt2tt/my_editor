@@ -37,6 +37,7 @@ class FileController:
 
         # エディタウィジェットとタブIDの対応関係を追跡する。
         self._tab_id_by_editor: dict[QPlainTextEdit, str] = {}
+        self._tab_view.set_close_request_handler(self._handle_tab_close_requested)
 
     def open_file(self, path: Path) -> int:
         """ファイルを開き、エディタタブに内容を表示する。
@@ -114,11 +115,50 @@ class FileController:
 
         return resolved
 
+    def close_current_tab(self) -> Optional[Path]:
+        """現在アクティブなタブを閉じる。"""
+        editor = self._extract_current_editor()
+        if editor is None:
+            return None
+
+        return self._close_editor(editor)
+
+    def _handle_tab_close_requested(self, index: int) -> None:
+        """タブクローズボタンからの要求を処理する。"""
+        widget = self._tab_view.widget(index)
+        if not isinstance(widget, QPlainTextEdit):
+            self._logger.warning("クローズ対象がテキストエディタではありません: index=%s", index)
+            self._tab_view.close_tab(index)
+            return
+
+        self._close_editor(widget)
+
+    def _close_editor(self, editor: QPlainTextEdit) -> Optional[Path]:
+        """エディタに対応するタブと状態をクローズする。"""
+        try:
+            tab_id = self._require_tab_id(editor)
+        except KeyError:
+            self._logger.warning("タブIDの特定に失敗したため閉じる処理を中断します。")
+            return None
+
+        target_path = self._tab_state.get_file_path(tab_id)
+        tab_index = self._tab_view.indexOf(editor)
+        if tab_index == -1:
+            self._logger.warning("タブインデックスの特定に失敗したため閉じる処理を中断します。")
+            return None
+
+        closed_path = self._tab_view.close_tab(tab_index)
+
+        self._tab_state.close_tab(tab_id)
+        self._tab_id_by_editor.pop(editor, None)
+        self._logger.info("タブを閉じました: id=%s path=%s", tab_id, target_path)
+        return closed_path
+
     def _extract_current_editor(self) -> Optional[QPlainTextEdit]:
         """現在アクティブなエディタを取得する。"""
         editor = self._tab_view.get_current_editor()
         if editor is None:
-            self._logger.warning("アクティブなエディタが存在しないため保存を中止しました。")
+            self._logger.debug("アクティブなエディタが存在しません。")
         return editor
 
     def on_editor_text_changed(self, editor: Optional[QPlainTextEdit] = None) -> None:

@@ -85,7 +85,7 @@
 21. [済] フォルダツリーファイル操作 (`views/folder_tree.py` + `controllers/folder_controller.py`)
 	- 関数: `FolderTree._show_context_menu()`, `FolderController._apply_context_action()`
 	- テスト: `tests/controllers/test_folder_controller.py::test_apply_context_action`
-22. UI操作からのコントローラ呼び出し (`controllers/app_controller.py`, `views/main_window.py`)
+22. [済] UI操作からのコントローラ呼び出し (`controllers/app_controller.py`, `views/main_window.py`)
 	- 関数: `AppController._initialize_controllers()`, `MainWindow._bind_actions()` (仮)
 	- メニューやボタン操作でFileController/FoldersControllerの機能を実行
 	- テスト: `tests/controllers/test_app_controller.py::test_open_action_triggers_file_controller`

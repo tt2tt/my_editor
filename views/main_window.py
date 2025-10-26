@@ -1,20 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (
-    QHBoxLayout,
-    QLineEdit,
-    QListWidget,
-    QMainWindow,
-    QPushButton,
-    QSplitter,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtWidgets import QHBoxLayout, QLineEdit, QMainWindow, QPushButton, QSplitter, QVBoxLayout, QWidget
 
 from views.editor_tab_widget import EditorTabWidget
+from views.folder_tree import FolderTree
 
 
 class MainWindow(QMainWindow):
@@ -37,6 +28,7 @@ class MainWindow(QMainWindow):
         # UI構築とシグナル接続を実行する。
         self._build_layout()
         self._connect_signals()
+        self._bind_actions()
 
     def _build_layout(self) -> None:
         """メインウィンドウのレイアウトを構築する。"""
@@ -50,11 +42,10 @@ class MainWindow(QMainWindow):
         self._main_splitter.setObjectName("mainSplitter")
         main_layout.addWidget(self._main_splitter)
 
-        # 左側: フォルダツリー領域 (現時点ではリストで仮実装)。
-        self._folder_list = QListWidget(self._main_splitter)
-        self._folder_list.setObjectName("folderList")
-        self._folder_list.addItem("プロジェクトルート")
-        self._main_splitter.addWidget(self._folder_list)
+        # 左側: フォルダツリー領域。
+        self._folder_tree = FolderTree(self._main_splitter)
+        self._folder_tree.setObjectName("folderTree")
+        self._main_splitter.addWidget(self._folder_tree)
 
         # 右側: エディタ領域とチャットUIをまとめる縦レイアウト。
         editor_panel = QWidget(self._main_splitter)
@@ -62,11 +53,9 @@ class MainWindow(QMainWindow):
         editor_layout.setContentsMargins(0, 0, 0, 0)
         editor_layout.setSpacing(8)
 
-        # エディタタブのプレースホルダーを用意する。
+        # エディタタブウィジェットを配置する。
         self._tab_widget = EditorTabWidget(editor_panel)
         self._tab_widget.setObjectName("editorTabs")
-        welcome_path = Path("welcome.txt")
-        self._tab_widget.add_editor_tab(welcome_path, "ここにエディタコンテンツが表示されます。")
         editor_layout.addWidget(self._tab_widget)
 
         # チャット入力と送信ボタンを横並びで配置する。
@@ -95,6 +84,27 @@ class MainWindow(QMainWindow):
         self._send_button.clicked.connect(self._handle_chat_submit)
         self._chat_input.returnPressed.connect(self._handle_chat_submit)
 
+    def _bind_actions(self) -> None:
+        """メニューバーのアクションを初期化する。"""
+        menu_bar = self.menuBar()
+        file_menu = menu_bar.addMenu("ファイル")
+
+        self._action_open_file = QAction("開く...", self)
+        self._action_open_file.setShortcut(QKeySequence.StandardKey.Open)
+        file_menu.addAction(self._action_open_file)
+
+        self._action_open_folder = QAction("フォルダを開く...", self)
+        self._action_open_folder.setShortcut(QKeySequence("Ctrl+Shift+O"))
+        file_menu.addAction(self._action_open_folder)
+
+        self._action_save_file = QAction("保存", self)
+        self._action_save_file.setShortcut(QKeySequence.StandardKey.Save)
+        file_menu.addAction(self._action_save_file)
+
+        self._action_close_tab = QAction("タブを閉じる", self)
+        self._action_close_tab.setShortcut(QKeySequence.StandardKey.Close)
+        file_menu.addAction(self._action_close_tab)
+
     def _handle_chat_submit(self) -> None:
         """チャット入力の送信要求を処理する。"""
         text = self._chat_input.text().strip()
@@ -105,9 +115,14 @@ class MainWindow(QMainWindow):
         self._chat_input.clear()
 
     @property
-    def folder_view(self) -> QListWidget:
-        """フォルダリストウィジェットを返す。"""
-        return self._folder_list
+    def folder_view(self) -> FolderTree:
+        """フォルダツリーウィジェットを返す。互換目的のエイリアス。"""
+        return self._folder_tree
+
+    @property
+    def folder_tree(self) -> FolderTree:
+        """フォルダツリーウィジェットを返す。"""
+        return self._folder_tree
 
     @property
     def tab_widget(self) -> EditorTabWidget:
@@ -123,3 +138,23 @@ class MainWindow(QMainWindow):
     def send_button(self) -> QPushButton:
         """チャット送信ボタンを返す。"""
         return self._send_button
+
+    @property
+    def action_open_file(self) -> QAction:
+        """ファイルを開くアクションを返す。"""
+        return self._action_open_file
+
+    @property
+    def action_save_file(self) -> QAction:
+        """ファイル保存アクションを返す。"""
+        return self._action_save_file
+
+    @property
+    def action_close_tab(self) -> QAction:
+        """タブを閉じるアクションを返す。"""
+        return self._action_close_tab
+
+    @property
+    def action_open_folder(self) -> QAction:
+        """フォルダを開くアクションを返す。"""
+        return self._action_open_folder

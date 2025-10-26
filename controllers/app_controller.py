@@ -2,18 +2,21 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import Callable, Optional
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QFileDialog
 
 from controllers.event_bus import EventBus, Payload
+from controllers.file_controller import FileController
+from controllers.folder_controller import FolderController
+from controllers.tab_controller import TabController
+from models.file_model import FileModel
+from models.folder_model import FolderModel
+from models.tab_model import TabState
+from views.folder_tree import FolderTree
 from views.main_window import MainWindow
-
-if TYPE_CHECKING:
-    from controllers.file_controller import FileController
-    from controllers.folder_controller import FolderController
-    from controllers.tab_controller import TabController
+from exceptions import FileOperationError
 
 
 class AppController:
@@ -55,9 +58,11 @@ class AppController:
         self._file_controller = file_controller
         self._folder_controller = folder_controller
         self._tab_controller = tab_controller
+        self._tab_state: Optional[TabState] = None
 
         # メインウィンドウを構築する。
         self._initialize_window()
+        self._initialize_controllers()
         self._wire_events()
 
     def _initialize_window(self) -> None:
@@ -65,6 +70,58 @@ class AppController:
         # ウィンドウを生成し、後続処理で利用できるように保持する。
         self._window = self._window_factory()
         self._logger.info("メインウィンドウを初期化しました。")
+
+    def _initialize_controllers(self) -> None:
+        """UIアクションと各コントローラを結び付ける。"""
+        if self._window is None:
+            raise RuntimeError("ウィンドウが初期化されていません。")
+
+        tab_view = self._window.tab_widget
+        folder_view: FolderTree = self._window.folder_view
+
+        # 既存の依存が無い場合は標準構成を生成する。
+        if self._tab_state is None:
+            self._tab_state = TabState(self._logger.getChild("tab_state"))
+
+        if self._tab_controller is None:
+            self._tab_controller = TabController(
+                self._tab_state,
+                tab_view,
+                logger=self._logger.getChild("tab_controller"),
+            )
+
+        if self._file_controller is None:
+            file_model = FileModel(self._logger.getChild("file_model"))
+            self._file_controller = FileController(
+                file_model,
+                self._tab_state,
+                tab_view,
+                logger=self._logger.getChild("file_controller"),
+            )
+
+        if self._folder_controller is None:
+            folder_model = FolderModel(self._logger.getChild("folder_model"))
+            self._folder_controller = FolderController(
+                folder_model,
+                folder_view,
+                logger=self._logger.getChild("folder_controller"),
+            )
+
+        open_action = getattr(self._window, "action_open_file", None)
+        if open_action is not None:
+            open_action.triggered.connect(self._handle_open_file_action)
+
+        open_folder_action = getattr(self._window, "action_open_folder", None)
+        if open_folder_action is not None:
+            open_folder_action.triggered.connect(self._handle_open_folder_action)
+
+        save_action = getattr(self._window, "action_save_file", None)
+        if save_action is not None:
+            save_action.triggered.connect(self._emit_save_requested)
+
+        close_action = getattr(self._window, "action_close_tab", None)
+        if close_action is not None:
+            close_action.triggered.connect(self._handle_close_tab_action)
 
     def _wire_events(self) -> None:
         """ビューシグナルとイベントバスの結線、およびハンドラ購読を設定する。"""
@@ -98,6 +155,26 @@ class AppController:
         payload: Payload = {"path": path}
         self._event_bus.publish(self.EVENT_FOLDER_SELECTED, payload)
         self._logger.debug("フォルダ選択イベントを発行しました: %s", payload)
+        self._open_file_from_folder_selection(path)
+
+    def _open_file_from_folder_selection(self, path: Optional[Path]) -> None:
+        """フォルダツリーで選択されたファイルを開く。"""
+        if path is None:
+            return
+
+        normalized = path.expanduser().resolve(strict=False)
+
+        if not normalized.is_file():
+            return
+
+        if self._file_controller is None:
+            self._logger.warning("フォルダ選択からファイルを開けません。ファイルコントローラが未設定です。")
+            return
+
+        try:
+            self._file_controller.open_file(normalized)
+        except Exception:  # noqa: BLE001
+            self._logger.exception("フォルダ選択からのファイルオープンに失敗しました。")
 
     def _handle_save_request(self, payload: Payload) -> None:
         """保存要求イベントを受け取りファイル保存を実行する。"""
@@ -114,6 +191,83 @@ class AppController:
         saved_payload: Payload = {"path": result} if result is not None else None
         self._event_bus.publish(self.EVENT_FILE_SAVED, saved_payload)
         self._logger.info("ファイル保存が完了しました。%s", saved_payload)
+
+    def _handle_open_file_action(self) -> None:
+        """ファイルを開くアクションを処理する。"""
+        if self._file_controller is None:
+            self._logger.warning("ファイルコントローラが未設定のため開く操作を処理できません。")
+            return
+
+        selected = self._prompt_file_to_open()
+        if selected is None:
+            self._logger.debug("ファイル選択がキャンセルされました。")
+            return
+
+        try:
+            self._file_controller.open_file(selected)
+        except Exception:  # noqa: BLE001
+            self._logger.exception("ファイルを開く処理中に例外が発生しました。")
+
+    def _handle_open_folder_action(self) -> None:
+        """フォルダを開くアクションを処理する。"""
+        if self._folder_controller is None:
+            self._logger.warning("フォルダコントローラが未設定のためフォルダを開けません。")
+            return
+
+        selected = self._prompt_folder_to_open()
+        if selected is None:
+            self._logger.debug("フォルダ選択がキャンセルされました。")
+            return
+
+        try:
+            self._folder_controller.load_initial_tree(selected)
+        except FileOperationError:
+            self._logger.exception("フォルダツリーの初期化に失敗しました。")
+        except Exception:  # noqa: BLE001
+            self._logger.exception("フォルダ読み込み処理中に予期せぬエラーが発生しました。")
+
+    def _handle_close_tab_action(self) -> None:
+        """タブを閉じるアクションを処理する。"""
+        if self._file_controller is None:
+            self._logger.warning("ファイルコントローラが未設定のためタブを閉じられません。")
+            return
+
+        try:
+            closed_path = self._file_controller.close_current_tab()
+        except Exception:  # noqa: BLE001
+            self._logger.exception("タブを閉じる処理中に例外が発生しました。")
+            return
+
+        if closed_path is None:
+            self._logger.debug("タブを閉じる対象が存在しませんでした。")
+        else:
+            self._logger.info("タブを閉じました: %s", closed_path)
+
+    def _prompt_file_to_open(self) -> Optional[Path]:
+        """ファイルを開く際の選択ダイアログを表示する。"""
+        if self._window is None:
+            return None
+
+        file_path, _ = QFileDialog.getOpenFileName(self._window, "ファイルを開く")
+        if not file_path:
+            return None
+
+        return Path(file_path).expanduser().resolve(strict=False)
+
+    def _prompt_folder_to_open(self) -> Optional[Path]:
+        """フォルダ選択ダイアログを表示する。"""
+        if self._window is None:
+            return None
+
+        directory = QFileDialog.getExistingDirectory(self._window, "フォルダを開く")
+        if not directory:
+            return None
+
+        return Path(directory).expanduser().resolve(strict=False)
+
+    def _emit_save_requested(self) -> None:
+        """保存要求イベントをイベントバスへ送出する。"""
+        self._event_bus.publish(self.EVENT_FILE_SAVE_REQUESTED, None)
 
     def _resolve_selected_path(self) -> Optional[Path]:
         """フォルダビューの選択状態からパス情報を取得する。"""

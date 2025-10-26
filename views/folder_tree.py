@@ -66,6 +66,7 @@ class FolderTree(QTreeWidget):
         icon_name = "folder" if node.is_directory else "text-x-generic"
         item.setIcon(0, QIcon.fromTheme(icon_name))
         item.setData(0, Qt.ItemDataRole.UserRole, str(node.path))
+        item.setData(0, Qt.ItemDataRole.UserRole + 1, node.is_directory)
 
         self._path_item_map[node.path.resolve(strict=False)] = item
 
@@ -73,6 +74,64 @@ class FolderTree(QTreeWidget):
             item.addChild(self._create_item(child))
 
         return item
+
+    def add_node(self, parent_path: Path, node: FolderNode) -> None:
+        """指定パス配下にノードを追加する。"""
+        normalized_parent = parent_path.expanduser().resolve(strict=False)
+        parent_item = self._path_item_map.get(normalized_parent)
+        if parent_item is None:
+            raise FileOperationError(f"親ノードが存在しません: {normalized_parent}")
+
+        new_item = self._create_item(node)
+        new_key = self._sort_key(node.is_directory, node.name)
+
+        insert_index = parent_item.childCount()
+        for index in range(parent_item.childCount()):
+            child = parent_item.child(index)
+            child_is_dir = bool(child.data(0, Qt.ItemDataRole.UserRole + 1))
+            child_key = self._sort_key(child_is_dir, child.text(0))
+            if new_key < child_key:
+                insert_index = index
+                break
+
+        parent_item.insertChild(insert_index, new_item)
+
+    def remove_path(self, path: Path) -> None:
+        """指定パスのノードをツリーから削除する。"""
+        normalized = path.expanduser().resolve(strict=False)
+        target_item = self._path_item_map.get(normalized)
+        if target_item is None:
+            raise FileOperationError(f"削除対象がツリーに存在しません: {normalized}")
+
+        index = self.indexOfTopLevelItem(target_item)
+        if index >= 0:
+            removed_item = cast(QTreeWidgetItem, self.takeTopLevelItem(index))
+            self._remove_item_recursive(removed_item)
+            return
+
+        parent_item = target_item.parent()
+        if parent_item is None:
+            raise FileOperationError(f"親アイテムの取得に失敗しました: {normalized}")
+
+        parent_item.takeChild(parent_item.indexOfChild(target_item))
+        self._remove_item_recursive(target_item)
+
+    def _remove_item_recursive(self, item: QTreeWidgetItem) -> None:
+        """ノードとその子孫をマップから再帰的に削除する。"""
+        data = item.data(0, Qt.ItemDataRole.UserRole)
+        if isinstance(data, str):
+            normalized = Path(data).expanduser().resolve(strict=False)
+            self._path_item_map.pop(normalized, None)
+
+        while item.childCount() > 0:
+            child = item.child(0)
+            item.takeChild(0)
+            self._remove_item_recursive(child)
+
+    @staticmethod
+    def _sort_key(is_directory: bool, name: str) -> tuple[int, str]:
+        """ディレクトリ優先のソートキーを生成する。"""
+        return (0 if is_directory else 1, name.casefold())
 
     def set_context_action_handler(self, handler: Callable[[str, Path], Optional[Path]]) -> None:
         """コンテキストメニューの操作時に呼び出すハンドラを登録する。"""
@@ -134,4 +193,5 @@ class FolderTree(QTreeWidget):
             return
 
         handler = self._context_handler
+        assert handler is not None
         handler(selected_key, target_path)

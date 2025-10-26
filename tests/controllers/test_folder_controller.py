@@ -59,6 +59,26 @@ def test_load_initial_tree_populates_view(qt_app: QApplication, tmp_path: Path) 
     assert _collect_child_names(src_item) == {"main.py"}
 
 
+def test_load_initial_tree_sorts_directories_first(qt_app: QApplication, tmp_path: Path) -> None:
+    """ディレクトリがファイルより上に表示される順序を検証する。"""
+    root = tmp_path / "workspace"
+    root.mkdir()
+    (root / "docs").mkdir()
+    (root / "src").mkdir()
+    (root / "a.txt").write_text("a", encoding="utf-8")
+    (root / "b.txt").write_text("b", encoding="utf-8")
+
+    tree = FolderTree()
+    controller = FolderController(FolderModel(), tree)
+
+    controller.load_initial_tree(root)
+
+    root_item = tree.topLevelItem(0)
+    assert root_item is not None
+    child_order = [root_item.child(index).text(0) for index in range(root_item.childCount())]
+    assert child_order == ["docs", "src", "a.txt", "b.txt"]
+
+
 def test_handle_create(qt_app: QApplication, tmp_path: Path) -> None:
     """handle_createで新規項目が作成されツリーへ反映されることを検証する。"""
     root = tmp_path / "workspace"
