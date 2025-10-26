@@ -63,7 +63,7 @@ class TabController:
                 continue
             if self._resolve_tab_id(widget) == tab_id:
                 self._tab_id_by_editor.pop(widget, None)
-                self._tab_view.removeTab(index)
+                self._tab_view.close_tab(index)
                 break
         else:
             self._logger.error("指定されたタブIDがビュー内に見つかりません: %s", tab_id)

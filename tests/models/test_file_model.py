@@ -48,3 +48,15 @@ def test_load_file_missing_raises(tmp_path: Path) -> None:
 
     with pytest.raises(FileOperationError):
         model.load_file(tmp_path / "missing.txt")
+
+
+def test_load_file_fallback_encoding(tmp_path: Path) -> None:
+    """UTF-16などのファイルでもフォールバックにより読み込めることを確認する。"""
+    target = tmp_path / "utf16.txt"
+    target.write_text("fallback text", encoding="utf-16")
+
+    model = FileModel()
+    content = model.load_file(target)
+
+    assert content == "fallback text"
+    assert target.resolve() in set(model.list_open_files())

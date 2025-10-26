@@ -7,6 +7,7 @@ import pytest
 
 pytest.importorskip("PySide6")
 
+from PySide6.QtCore import QPoint
 from PySide6.QtWidgets import QApplication, QTreeWidgetItem
 
 from controllers.folder_controller import FolderController
@@ -58,6 +59,26 @@ def test_load_initial_tree_populates_view(qt_app: QApplication, tmp_path: Path) 
     assert _collect_child_names(src_item) == {"main.py"}
 
 
+def test_load_initial_tree_sorts_directories_first(qt_app: QApplication, tmp_path: Path) -> None:
+    """ディレクトリがファイルより上に表示される順序を検証する。"""
+    root = tmp_path / "workspace"
+    root.mkdir()
+    (root / "docs").mkdir()
+    (root / "src").mkdir()
+    (root / "a.txt").write_text("a", encoding="utf-8")
+    (root / "b.txt").write_text("b", encoding="utf-8")
+
+    tree = FolderTree()
+    controller = FolderController(FolderModel(), tree)
+
+    controller.load_initial_tree(root)
+
+    root_item = tree.topLevelItem(0)
+    assert root_item is not None
+    child_order = [root_item.child(index).text(0) for index in range(root_item.childCount())]
+    assert child_order == ["docs", "src", "a.txt", "b.txt"]
+
+
 def test_handle_create(qt_app: QApplication, tmp_path: Path) -> None:
     """handle_createで新規項目が作成されツリーへ反映されることを検証する。"""
     root = tmp_path / "workspace"
@@ -95,3 +116,39 @@ def test_handle_delete_removes_entry(qt_app: QApplication, tmp_path: Path) -> No
     assert tree.current_path() == root.resolve()
     with pytest.raises(FileOperationError):
         tree.select_path(target)
+
+
+def test_apply_context_action(qt_app: QApplication, tmp_path: Path) -> None:
+    """コンテキスト操作がモデル更新とビュー反映に繋がることを検証する。"""
+    root = tmp_path / "workspace"
+    root.mkdir()
+    existing = root / "keep.txt"
+    existing.write_text("data", encoding="utf-8")
+
+    tree = FolderTree()
+    controller = FolderController(FolderModel(), tree)
+    controller.load_initial_tree(root)
+
+    created_file = controller._apply_context_action("create_file", root)
+    assert created_file is not None
+    assert created_file.exists()
+    assert tree.current_path() == created_file.resolve()
+
+    created_folder = controller._apply_context_action("create_folder", root)
+    assert created_folder is not None
+    assert created_folder.exists()
+    assert created_folder.is_dir()
+
+    controller._apply_context_action("delete", existing)
+    assert not existing.exists()
+
+    captured: list[tuple[str, Path]] = []
+    tree.set_context_action_handler(lambda action, path: captured.append((action, path)))
+    root_item = tree.topLevelItem(0)
+    assert root_item is not None
+    tree.setCurrentItem(root_item)
+    tree._show_context_menu(QPoint(0, 0), simulate_action="create_file")
+
+    assert captured
+    assert captured[0][0] == "create_file"
+    assert captured[0][1] == root.resolve()

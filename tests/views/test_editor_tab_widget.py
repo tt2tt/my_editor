@@ -63,3 +63,25 @@ def test_get_current_editor_returns_widget(tab_widget: EditorTabWidget) -> None:
     tab_widget.add_editor_tab(Path("sample.md"), "content")
     editor = tab_widget.get_current_editor()
     assert isinstance(editor, QPlainTextEdit)
+
+
+def test_close_tab_removes_widget(tab_widget: EditorTabWidget) -> None:
+    """close_tabでタブが削除されメタデータが更新されることを検証する。"""
+    index = tab_widget.add_editor_tab(Path("close.txt"), "data")
+
+    closed_path = tab_widget.close_tab(index)
+
+    assert closed_path == Path("close.txt")
+    assert tab_widget.count() == 0
+
+
+def test_close_request_handler_invoked(tab_widget: EditorTabWidget) -> None:
+    """タブのクローズボタンが設定済みハンドラを呼び出すことを検証する。"""
+    captured: list[int] = []
+    tab_widget.set_close_request_handler(lambda idx: captured.append(idx))
+    index = tab_widget.add_editor_tab(Path("handler.txt"), "body")
+
+    tab_widget.tabCloseRequested.emit(index)
+
+    assert captured == [index]
+    assert tab_widget.count() == 1

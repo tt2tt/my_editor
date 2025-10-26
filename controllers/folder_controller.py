@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import logging
 from pathlib import Path
 from typing import Iterable, Optional
@@ -24,6 +25,7 @@ class FolderController:
         self._folder_view = folder_view
         self._logger = logger or logging.getLogger("my_editor.folder_controller")
         self._current_root: Optional[Path] = None
+        self._folder_view.set_context_action_handler(self._apply_context_action)
 
     def load_initial_tree(self, path: Path) -> None:
         """ルートディレクトリを読み込みツリービューを構築する。"""
@@ -48,7 +50,13 @@ class FolderController:
         self._logger.info("項目の作成を開始します: %s", target)
 
         self._folder_model.create_item(target, is_dir=is_dir)
-        self._reload_tree(select_path=target)
+        try:
+            self._insert_into_view(target, is_dir=is_dir)
+        except FileOperationError as exc:
+            self._logger.warning("部分更新に失敗したため全体更新を実施します。", exc_info=exc)
+            self._rebuild_tree(select_path=target)
+        else:
+            self._attempt_select(target)
         self._logger.info("項目を作成しツリーを更新しました: %s", target)
 
     def handle_delete(self, path: Path) -> None:
@@ -62,29 +70,46 @@ class FolderController:
         if not parent.exists() or not self._is_under_root(parent):
             parent = root
 
-        self._reload_tree(select_path=parent)
+        try:
+            self._remove_from_view(target)
+        except FileOperationError as exc:
+            self._logger.warning("部分更新に失敗したため全体更新を実施します。", exc_info=exc)
+            self._rebuild_tree(select_path=parent)
+        else:
+            self._attempt_select(parent)
         self._logger.info("項目を削除しツリーを更新しました: %s", target)
 
-    def _reload_tree(self, select_path: Optional[Path]) -> None:
-        """現在のルートからツリーを再構築する。"""
+    def _insert_into_view(self, path: Path, *, is_dir: bool) -> None:
+        """ビューへ新規ノードを追加する。"""
+        parent_path = self._normalize(path.parent)
+        if not self._is_under_root(parent_path):
+            raise FileOperationError(f"親ディレクトリがルート配下にありません: {parent_path}")
+
+        resolved = self._normalize(path)
+        node_children: Iterable[FolderNode] | None = [] if is_dir else None
+        node = FolderNode(
+            name=resolved.name or str(resolved),
+            path=resolved,
+            is_directory=is_dir,
+            children=node_children,
+        )
+        self._folder_view.add_node(parent_path, node)
+
+    def _remove_from_view(self, path: Path) -> None:
+        """ビューから指定ノードを削除する。"""
+        resolved = self._normalize(path)
+        if not self._is_under_root(resolved):
+            raise FileOperationError(f"削除対象がルート配下にありません: {resolved}")
+        self._folder_view.remove_path(resolved)
+
+    def _rebuild_tree(self, select_path: Optional[Path]) -> None:
+        """ルート配下全体を再構築するフォールバック。"""
         root = self._require_root()
         root_node = self._build_node(root)
         self._folder_view.populate([root_node])
 
-        candidates: list[Path] = []
-        if select_path is not None:
-            candidates.append(select_path)
-        candidates.append(root)
-
-        for candidate in candidates:
-            if not candidate.exists():
-                continue
-            self._attempt_select(candidate)
-            current = self._folder_view.current_path()
-            if current is None:
-                continue
-            if self._normalize(current) == self._normalize(candidate):
-                break
+        if select_path is not None and select_path.exists():
+            self._attempt_select(select_path)
 
     def _build_node(self, path: Path) -> FolderNode:
         """指定パスを起点にフォルダノードを再帰的に生成する。"""
@@ -94,7 +119,8 @@ class FolderController:
 
         if is_directory:
             entries = self._folder_model.list_directory(resolved)
-            children = [self._build_node(entry) for entry in entries]
+            ordered_entries = self._sort_entries(entries)
+            children = [self._build_node(entry) for entry in ordered_entries]
 
         name = resolved.name or str(resolved)
         return FolderNode(name=name, path=resolved, is_directory=is_directory, children=children)
@@ -128,3 +154,45 @@ class FolderController:
     def _normalize(path: Path) -> Path:
         """パスを正規化して返す。"""
         return path.expanduser().resolve(strict=False)
+
+    def _sort_entries(self, entries: Iterable[Path]) -> list[Path]:
+        """ディレクトリを優先して名前順にエントリを並べ替える。"""
+        sorted_entries = sorted(
+            entries,
+            key=lambda entry: (0 if entry.is_dir() else 1, entry.name.casefold()),
+        )
+        return sorted_entries
+
+    def _apply_context_action(self, action: str, target: Path) -> Optional[Path]:
+        """コンテキストメニューからの操作を解決する。"""
+        normalized = self._normalize(target)
+        base_dir = normalized if normalized.is_dir() else normalized.parent
+
+        if action == "create_file":
+            new_path = self._generate_unique_path(base_dir, "新規ファイル", ".txt")
+            self.handle_create(new_path, is_dir=False)
+            return new_path
+
+        if action == "create_folder":
+            new_path = self._generate_unique_path(base_dir, "新規フォルダ", "")
+            self.handle_create(new_path, is_dir=True)
+            return new_path
+
+        if action == "delete":
+            self.handle_delete(normalized)
+            return normalized
+
+        self._logger.warning("未知のコンテキストアクションが指定されました: %s", action)
+        return None
+
+    def _generate_unique_path(self, directory: Path, base_name: str, suffix: str) -> Path:
+        """同名衝突を避ける新規パスを生成する。"""
+        directory = directory.resolve()
+        if not directory.exists():
+            directory.mkdir(parents=True, exist_ok=True)
+
+        candidate = directory / f"{base_name}{suffix}"
+        counter = itertools.count(2)
+        while candidate.exists():
+            candidate = directory / f"{base_name}{next(counter)}{suffix}"
+        return candidate

@@ -44,7 +44,13 @@ package "View" {
   class EditorTabWidget {
     +add_editor_tab(file_path: Path, content: str): int
     +set_dirty(tab_index: int, dirty: bool): None
-    +get_current_editor(): QPlainTextEdit
+    +get_current_editor(): EditorWidget
+  }
+
+  class EditorWidget {
+    +current_zoom_level: int
+    -_init_line_numbers(): None
+    +wheelEvent(event: QWheelEvent): None
   }
 
   class FolderTree {
@@ -63,6 +69,11 @@ package "Controller" {
   class AppController {
     +start(): None
     -_wire_events(): None
+  }
+
+  class EventBus {
+    +subscribe(event: str, handler)
+    +publish(event: str, payload)
   }
 
   class FileController {
@@ -93,6 +104,7 @@ AppController --> MainWindow : controls
 AppController --> FileController : coordinates
 AppController --> AIController : coordinates
 AppController --> SettingsModel : uses
+AppController --> EventBus : dispatches
 
 FileController --> FileModel : uses
 FileController --> EditorTabWidget : updates
@@ -101,10 +113,14 @@ FolderController --> FolderModel : uses
 FolderController --> FolderTree : updates
 TabController --> TabState : updates
 TabController --> EditorTabWidget : updates
+EditorTabWidget o-- EditorWidget : owns
 
 AIController --> ChatPanel : updates
 AIController --> SettingsModel : reads/writes
 AIController --> FileModel : optional_context
+
+MainWindow -[dashed]-> EventBus : emits_signals
+EventBus --> FileController : propagates
 
 MainWindow o-- EditorTabWidget : owns
 MainWindow o-- FolderTree : owns

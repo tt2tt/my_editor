@@ -9,10 +9,11 @@ pytest.importorskip("PySide6")
 
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QListWidget, QSplitter
+from PySide6.QtWidgets import QApplication, QSplitter
 
 from views.main_window import MainWindow
 from views.editor_tab_widget import EditorTabWidget
+from views.folder_tree import FolderTree
 
 
 @pytest.fixture(name="qt_app")
@@ -40,10 +41,9 @@ def test_main_window_builds_layout(main_window: MainWindow) -> None:
     assert splitter is not None
 
     folder = main_window.folder_view
-    assert isinstance(folder, QListWidget)
-    assert folder.count() >= 1
+    assert isinstance(folder, FolderTree)
     assert isinstance(main_window.tab_widget, EditorTabWidget)
-    assert main_window.tab_widget.count() == 1
+    assert main_window.tab_widget.count() == 0
 
 
 def test_chat_input_clear_on_send(main_window: MainWindow, qt_app: QApplication) -> None:
