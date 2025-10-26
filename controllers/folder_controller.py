@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import logging
 from pathlib import Path
 from typing import Iterable, Optional
@@ -24,6 +25,7 @@ class FolderController:
         self._folder_view = folder_view
         self._logger = logger or logging.getLogger("my_editor.folder_controller")
         self._current_root: Optional[Path] = None
+        self._folder_view.set_context_action_handler(self._apply_context_action)
 
     def load_initial_tree(self, path: Path) -> None:
         """ルートディレクトリを読み込みツリービューを構築する。"""
@@ -128,3 +130,37 @@ class FolderController:
     def _normalize(path: Path) -> Path:
         """パスを正規化して返す。"""
         return path.expanduser().resolve(strict=False)
+
+    def _apply_context_action(self, action: str, target: Path) -> Optional[Path]:
+        """コンテキストメニューからの操作を解決する。"""
+        normalized = self._normalize(target)
+        base_dir = normalized if normalized.is_dir() else normalized.parent
+
+        if action == "create_file":
+            new_path = self._generate_unique_path(base_dir, "新規ファイル", ".txt")
+            self.handle_create(new_path, is_dir=False)
+            return new_path
+
+        if action == "create_folder":
+            new_path = self._generate_unique_path(base_dir, "新規フォルダ", "")
+            self.handle_create(new_path, is_dir=True)
+            return new_path
+
+        if action == "delete":
+            self.handle_delete(normalized)
+            return normalized
+
+        self._logger.warning("未知のコンテキストアクションが指定されました: %s", action)
+        return None
+
+    def _generate_unique_path(self, directory: Path, base_name: str, suffix: str) -> Path:
+        """同名衝突を避ける新規パスを生成する。"""
+        directory = directory.resolve()
+        if not directory.exists():
+            directory.mkdir(parents=True, exist_ok=True)
+
+        candidate = directory / f"{base_name}{suffix}"
+        counter = itertools.count(2)
+        while candidate.exists():
+            candidate = directory / f"{base_name}{next(counter)}{suffix}"
+        return candidate

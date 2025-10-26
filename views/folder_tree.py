@@ -3,11 +3,11 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Optional, cast
+from typing import Callable, Iterable, Optional, cast
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QAbstractItemView, QTreeWidget, QTreeWidgetItem, QWidget
+from PySide6.QtCore import QPoint, Qt
+from PySide6.QtGui import QIcon, QAction
+from PySide6.QtWidgets import QAbstractItemView, QMenu, QTreeWidget, QTreeWidgetItem, QWidget
 
 from exceptions import FileOperationError
 
@@ -33,6 +33,10 @@ class FolderTree(QTreeWidget):
         self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.setIndentation(18)
         self._path_item_map: dict[Path, QTreeWidgetItem] = {}
+        self._context_handler: Callable[[str, Path], Optional[Path]] | None = None
+
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._show_context_menu)
 
     def populate(self, nodes: Iterable[FolderNode]) -> None:
         """与えられたノード情報からツリーデータを構築する。"""
@@ -70,6 +74,10 @@ class FolderTree(QTreeWidget):
 
         return item
 
+    def set_context_action_handler(self, handler: Callable[[str, Path], Optional[Path]]) -> None:
+        """コンテキストメニューの操作時に呼び出すハンドラを登録する。"""
+        self._context_handler = handler
+
     def current_path(self) -> Optional[Path]:
         """現在選択されているアイテムのパスを返す。"""
         item = cast(Optional[QTreeWidgetItem], self.currentItem())
@@ -81,3 +89,49 @@ class FolderTree(QTreeWidget):
             return Path(data)
 
         return None
+
+    def _show_context_menu(self, position: QPoint, *, simulate_action: str | None = None) -> None:
+        """右クリック時にコンテキストメニューを表示する。"""
+        if self._context_handler is None:
+            self._logger.debug("コンテキストメニューのハンドラが未設定です。")
+            return
+
+        item = cast(Optional[QTreeWidgetItem], self.itemAt(position))
+        if item is None:
+            current_item = cast(Optional[QTreeWidgetItem], self.currentItem())
+            if current_item is None:
+                self._logger.debug("コンテキストメニューを表示できる項目が選択されていません。")
+                return
+            item = current_item
+
+        data = item.data(0, Qt.ItemDataRole.UserRole)
+        if not isinstance(data, str):
+            self._logger.debug("アイテムのパス情報を取得できません。")
+            return
+
+        target_path = Path(data)
+
+        menu = QMenu(self)
+        create_file_action = menu.addAction("新規ファイル")
+        create_file_action.setData("create_file")
+        create_folder_action = menu.addAction("新規フォルダ")
+        create_folder_action.setData("create_folder")
+        menu.addSeparator()
+        delete_action = menu.addAction("削除")
+        delete_action.setData("delete")
+
+        if simulate_action is not None:
+            selected_key: object = simulate_action
+        else:
+            global_pos = self.viewport().mapToGlobal(position)
+            selected = cast(Optional[QAction], menu.exec(global_pos))
+            if selected is None:
+                return
+            selected_key = selected.data()
+
+        if not isinstance(selected_key, str):
+            self._logger.debug("不明なメニュー項目が選択されました。")
+            return
+
+        handler = self._context_handler
+        handler(selected_key, target_path)

@@ -82,7 +82,7 @@
 	- クラス: `EditorWidget`
 	- 関数: `EditorWidget._init_line_numbers()`, `EditorWidget.wheelEvent(event)`でCtrl+スクロール検知
 	- テスト: `tests/views/test_editor_widget.py::test_wheel_event_zoom`
-21. フォルダツリーファイル操作 (`views/folder_tree.py` + `controllers/folder_controller.py`)
+21. [済] フォルダツリーファイル操作 (`views/folder_tree.py` + `controllers/folder_controller.py`)
 	- 関数: `FolderTree._show_context_menu()`, `FolderController._apply_context_action()`
 	- テスト: `tests/controllers/test_folder_controller.py::test_apply_context_action`
 22. UI操作からのコントローラ呼び出し (`controllers/app_controller.py`, `views/main_window.py`)
