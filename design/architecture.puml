@@ -66,9 +66,9 @@ package "Controller" {
   }
 
   class FileController {
-    +open_file(path: Path): None
-    +save_current_file(): None
-    +mark_dirty(tab_id: str, is_dirty: bool): None
+    +open_file(path: Path): int
+    +save_current_file(): Path | None
+    +save_file_as(path: Path): Path | None
   }
 
   class AIController {

@@ -60,6 +60,18 @@ class EditorTabWidget(QTabWidget):
         metadata.is_dirty = dirty
         self._logger.info("タブの状態を更新しました: index=%s dirty=%s", tab_index, dirty)
 
+    def update_tab_path(self, tab_index: int, new_path: Path) -> None:
+        """タブに紐づくパス情報を更新する。"""
+        metadata, _ = self._get_metadata(tab_index)
+        resolved = new_path.expanduser().resolve(strict=False)
+        metadata.path = resolved
+        metadata.title = resolved.name or str(resolved)
+
+        display_title = f"{metadata.title}*" if metadata.is_dirty else metadata.title
+        self.setTabText(tab_index, display_title)
+        self.setTabToolTip(tab_index, str(resolved))
+        self._logger.info("タブのパスを更新しました: index=%s path=%s", tab_index, resolved)
+
     def get_current_editor(self) -> Optional[QPlainTextEdit]:
         """現在アクティブなエディタウィジェットを返す。"""
         widget = self.currentWidget()
