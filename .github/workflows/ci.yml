@@ -58,7 +58,7 @@ jobs:
 
   release:
     needs: build
-  if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     # mainブランチではドラフトリリースを作成する。
     runs-on: ubuntu-latest
     steps:
