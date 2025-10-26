@@ -11,12 +11,19 @@ package "Model" {
   class FileModel {
     +load_file(path: Path): str
     +save_file(path: Path, content: str): None
+    +list_open_files(): list
   }
 
   class FolderModel {
     +list_directory(path: Path): list
     +create_item(path: Path, is_dir: bool): None
     +delete_item(path: Path): None
+  }
+
+  class TabState {
+    +add_tab(file_path: Path): str
+    +mark_dirty(tab_id: str, dirty: bool): None
+    +close_tab(tab_id: str): None
   }
 
   class SettingsModel {
