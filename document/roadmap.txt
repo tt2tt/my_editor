@@ -74,7 +74,7 @@
 	- 関数: `AppController._wire_events()`
 	- タブ変更、フォルダ選択、保存イベントをEventBus経由で結合
 	- テスト: `tests/controllers/test_app_controller.py::test_wire_events_handles_save_request`
-19. 未保存フラグ更新 (`controllers/file_controller.py`)
+19. [済] 未保存フラグ更新 (`controllers/file_controller.py`)
 	- 関数: `on_editor_text_changed()`
 	- ビューからのsignalでTabModelを更新しマーク表示
 	- テスト: `tests/controllers/test_file_controller.py::test_on_editor_text_changed_sets_dirty`

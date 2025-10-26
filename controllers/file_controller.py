@@ -59,6 +59,7 @@ class FileController:
             raise RuntimeError("エディタウィジェットの生成に失敗しました。")
 
         self._tab_id_by_editor[editor_widget] = tab_id
+        editor_widget.textChanged.connect(lambda editor=editor_widget: self.on_editor_text_changed(editor))
         self._tab_view.setCurrentIndex(tab_index)
         return tab_index
 
@@ -119,6 +120,30 @@ class FileController:
         if editor is None:
             self._logger.warning("アクティブなエディタが存在しないため保存を中止しました。")
         return editor
+
+    def on_editor_text_changed(self, editor: Optional[QPlainTextEdit] = None) -> None:
+        """エディタ内容の変更を検知してダーティ状態を更新する。"""
+        target = editor or self._tab_view.get_current_editor()
+        if target is None:
+            self._logger.debug("テキスト変更を処理できません。エディタが未選択です。")
+            return
+
+        try:
+            tab_id = self._require_tab_id(target)
+        except KeyError:
+            self._logger.warning("テキスト変更の発生元タブを特定できませんでした。")
+            return
+
+        if self._tab_state.is_dirty(tab_id):
+            return
+
+        self._tab_state.mark_dirty(tab_id, True)
+
+        tab_index = self._tab_view.indexOf(target)
+        if tab_index != -1:
+            self._tab_view.set_dirty(tab_index, True)
+
+        self._logger.info("タブをダーティ状態へ更新しました: id=%s", tab_id)
 
     def _require_tab_id(self, editor: QPlainTextEdit) -> str:
         """エディタに紐づくタブIDを取得する。存在しない場合は例外を送出する。"""

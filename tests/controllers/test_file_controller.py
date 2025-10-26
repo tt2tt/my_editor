@@ -95,3 +95,28 @@ def test_save_file_as_updates_tab_state(qt_app: QApplication, tmp_path: Path) ->
     assert state.get_file_path(tab_id) == destination.resolve()
     assert tab_widget.tabText(index) == destination.name
     assert tab_widget.tabToolTip(index) == str(destination.resolve())
+
+
+def test_on_editor_text_changed_sets_dirty(qt_app: QApplication, tmp_path: Path) -> None:
+    """エディタの編集に伴いタブがダーティ状態になることを検証する。"""
+    file_path = tmp_path / "sample.txt"
+    file_path.write_text("before", encoding="utf-8")
+
+    model = FileModel()
+    state = TabState()
+    tab_widget = EditorTabWidget()
+    controller = FileController(model, state, tab_widget)
+
+    index = controller.open_file(file_path)
+    editor = tab_widget.widget(index)
+    assert isinstance(editor, QPlainTextEdit)
+    tab_id = controller._tab_id_by_editor[editor]
+
+    assert state.is_dirty(tab_id) is False
+    assert tab_widget.tabText(index) == file_path.name
+
+    editor.insertPlainText(" updated")
+    qt_app.processEvents()
+
+    assert state.is_dirty(tab_id) is True
+    assert tab_widget.tabText(index) == f"{file_path.name}*"
