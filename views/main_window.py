@@ -1,18 +1,20 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QHBoxLayout,
-    QLabel,
     QLineEdit,
     QListWidget,
     QMainWindow,
     QPushButton,
     QSplitter,
-    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
+
+from views.editor_tab_widget import EditorTabWidget
 
 
 class MainWindow(QMainWindow):
@@ -61,11 +63,10 @@ class MainWindow(QMainWindow):
         editor_layout.setSpacing(8)
 
         # エディタタブのプレースホルダーを用意する。
-        self._tab_widget = QTabWidget(editor_panel)
+        self._tab_widget = EditorTabWidget(editor_panel)
         self._tab_widget.setObjectName("editorTabs")
-        welcome_label = QLabel("ここにエディタコンテンツが表示されます。", self._tab_widget)
-        welcome_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._tab_widget.addTab(welcome_label, "スタート")
+        welcome_path = Path("welcome.txt")
+        self._tab_widget.add_editor_tab(welcome_path, "ここにエディタコンテンツが表示されます。")
         editor_layout.addWidget(self._tab_widget)
 
         # チャット入力と送信ボタンを横並びで配置する。
@@ -109,7 +110,7 @@ class MainWindow(QMainWindow):
         return self._folder_list
 
     @property
-    def tab_widget(self) -> QTabWidget:
+    def tab_widget(self) -> EditorTabWidget:
         """エディタタブウィジェットを返す。"""
         return self._tab_widget
 

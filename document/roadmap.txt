@@ -41,7 +41,7 @@
 10. [済] メインウィンドウ枠組み (`views/main_window.py`)
 	- 関数: `MainWindow._build_layout()`, `MainWindow._connect_signals()`
 	- テスト: GUIスモークテスト `tests/views/test_main_window.py::test_main_window_builds_layout`
-11. タブビュー (`views/editor_tab_widget.py`)
+11. [済] タブビュー (`views/editor_tab_widget.py`)
 	- クラス: `EditorTabWidget`
 	- 関数: `add_editor_tab(file_path: Path, content: str)`, `set_dirty(tab_index: int, dirty: bool)`, `get_current_editor()`
 	- QScintilla or QPlainTextEditで行番号表示対応

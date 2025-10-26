@@ -12,6 +12,7 @@ from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QListWidget, QSplitter
 
 from views.main_window import MainWindow
+from views.editor_tab_widget import EditorTabWidget
 
 
 @pytest.fixture(name="qt_app")
@@ -41,6 +42,7 @@ def test_main_window_builds_layout(main_window: MainWindow) -> None:
     folder = main_window.folder_view
     assert isinstance(folder, QListWidget)
     assert folder.count() >= 1
+    assert isinstance(main_window.tab_widget, EditorTabWidget)
     assert main_window.tab_widget.count() == 1
 
 
