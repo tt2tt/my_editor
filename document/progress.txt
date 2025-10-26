@@ -20,6 +20,8 @@
 15. フォルダコントローラ (`controllers/folder_controller.py`) 〇 2025-10-26 完了
 16. タブコントローラ (`controllers/tab_controller.py`) 〇 2025-10-26 完了
 17. AIコントローラ (`controllers/ai_controller.py`) 〇 2025-10-26 完了
+フェーズ5
+18. シグナル接続 (`controllers/app_controller.py`) 〇 2025-10-26 完了
 フェーズ8
 28. 型チェック (`mypy.ini`) と `mypy` 対応 〇 2025-10-25 完了
 29. GitHub Actions CI構築 (`.github/workflows/ci.yml`) 〇 2025-10-25 完了

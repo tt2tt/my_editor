@@ -70,10 +70,10 @@
 	- テスト: `tests/controllers/test_ai_controller.py::test_generate_code_handles_error` (モック)
 
 フェーズ5: 機能連携
-18. シグナル接続 (`controllers/app_controller.py`)
+18. [済] シグナル接続 (`controllers/app_controller.py`)
 	- 関数: `AppController._wire_events()`
 	- タブ変更、フォルダ選択、保存イベントをEventBus経由で結合
-	- テスト: `tests/controllers/test_app_controller.py::test_wire_events`
+	- テスト: `tests/controllers/test_app_controller.py::test_wire_events_handles_save_request`
 19. 未保存フラグ更新 (`controllers/file_controller.py`)
 	- 関数: `on_editor_text_changed()`
 	- ビューからのsignalでTabModelを更新しマーク表示
@@ -85,48 +85,52 @@
 21. フォルダツリーファイル操作 (`views/folder_tree.py` + `controllers/folder_controller.py`)
 	- 関数: `FolderTree._show_context_menu()`, `FolderController._apply_context_action()`
 	- テスト: `tests/controllers/test_folder_controller.py::test_apply_context_action`
+22. UI操作からのコントローラ呼び出し (`controllers/app_controller.py`, `views/main_window.py`)
+	- 関数: `AppController._initialize_controllers()`, `MainWindow._bind_actions()` (仮)
+	- メニューやボタン操作でFileController/FoldersControllerの機能を実行
+	- テスト: `tests/controllers/test_app_controller.py::test_open_action_triggers_file_controller`
 
 フェーズ6: コーディングサポート統合
-22. OpenAI設定画面 (`views/settings_dialog.py`)
+23. OpenAI設定画面 (`views/settings_dialog.py`)
 	- 関数: `SettingsDialog.__init__`, `SettingsDialog._bind_actions()`
 	- テスト: `tests/views/test_settings_dialog.py::test_save_triggers_model`
-23. APIキー永続化 (`controllers/settings_controller.py`)
+24. APIキー永続化 (`controllers/settings_controller.py`)
 	- 関数: `load_settings_into_dialog()`, `save_settings_from_dialog()`
 	- QSettings利用で暗号化ストレージ検討
 	- テスト: `tests/controllers/test_settings_controller.py::test_save_settings_calls_model`
-24. チャット連携 (`controllers/ai_controller.py`)
+25. チャット連携 (`controllers/ai_controller.py`)
 	- 関数: `handle_chat_submit(message: str)`
 	- ビュー更新とAPIレスポンス整形
 	- テスト: `tests/controllers/test_ai_controller.py::test_handle_chat_submit`
 
 フェーズ7: エラーハンドリングとログ整備
-25. グローバル例外ハンドラ (`main.py`)
+26. グローバル例外ハンドラ (`main.py`)
 	- 関数: `install_exception_hook()`
 	- ログ出力とユーザ通知
 	- テスト: `tests/test_main.py::test_exception_hook_logs`
-26. 操作ログ (`logging/handlers.py`)
+27. 操作ログ (`logging/handlers.py`)
 	- 関数: `attach_gui_handler(window)`, `log_user_action(action: str, detail: dict)`
 	- テスト: `tests/logging/test_handlers.py::test_log_user_action`
 
 フェーズ8: CI/CD・ビルド
-27. [済]  テストスイート統合 (`pytest.ini`)
+28. [済]  テストスイート統合 (`pytest.ini`)
 	- 関数/設定: `python -m pytest` 実行用設定
 	- テスト: なし (設定)
-28. [済] 型チェック (`mypy.ini`) と `mypy` 対応
+29. [済] 型チェック (`mypy.ini`) と `mypy` 対応
 	- 全関数への型注釈確認
 	- テスト: CIで `mypy` 実行
-29. [済] GitHub Actions CI構築 (`.github/workflows/ci.yml`)
+30. [済] GitHub Actions CI構築 (`.github/workflows/ci.yml`)
 	- develop: テスト, mypy, pyinstallerビルドによるデプロイ
 	- main: 上記 + GitHub Releasesアップロード
 	- テスト: リンター `tests/ci/test_workflow_syntax.py` でバリデーション
-30. [済] PyInstallerビルドスクリプト (`scripts/build_exe.py`)
+31. [済] PyInstallerビルドスクリプト (`scripts/build_exe.py`)
 	- 関数: `build_windows_exe()`
 	- テスト: `tests/scripts/test_build_exe.py::test_build_windows_exe_invokes_pyinstaller_default_paths`
 
 フェーズ9: QAと仕上げ
-31. UATシナリオ定義 (`tests/manual/uat_checklist.md`)
+32. UATシナリオ定義 (`tests/manual/uat_checklist.md`)
 	- テスト: 手動
-32. 進捗更新 (`document/progress.txt`)
+33. 進捗更新 (`document/progress.txt`)
 	- 各タスク完了時に〇でチェック
-33. ドキュメント整理 (`README.md`, `USAGE.md`)
+34. ドキュメント整理 (`README.md`, `USAGE.md`)
 	- 関数: なし
