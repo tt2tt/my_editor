@@ -49,7 +49,7 @@
 12. [済] フォルダツリービュー (`views/folder_tree.py`)
 	- 関数: `populate(model_data: list[FolderNode])`, `select_path(path: Path)`
 	- テスト: `tests/views/test_folder_tree.py::test_populate_sets_items`
-13. チャットパネルビュー (`views/chat_panel.py`)
+13. [済]  チャットパネルビュー (`views/chat_panel.py`)
 	- 関数: `append_user_message(text: str)`, `append_ai_message(text: str)`, `request_ai_completion()`
 	- テスト: `tests/views/test_chat_panel.py::test_append_messages`
 

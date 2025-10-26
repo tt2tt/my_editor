@@ -14,6 +14,7 @@
 10. メインウィンドウ枠組み (`views/main_window.py`) 〇 2025-10-26 完了
 11. タブビュー (`views/editor_tab_widget.py`) 〇 2025-10-26 完了
 12. フォルダツリービュー (`views/folder_tree.py`) 〇 2025-10-26 完了
+13. チャットパネルビュー (`views/chat_panel.py`) 〇 2025-10-26 完了
 フェーズ8
 28. 型チェック (`mypy.ini`) と `mypy` 対応 〇 2025-10-25 完了
 29. GitHub Actions CI構築 (`.github/workflows/ci.yml`) 〇 2025-10-25 完了

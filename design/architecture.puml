@@ -53,9 +53,9 @@ package "View" {
   }
 
   class ChatPanel {
-    +append_user_message(message: str): None
-    +append_ai_message(message: str): None
-    +request_completion(prompt: str): None
+    +append_user_message(text: str): None
+    +append_ai_message(text: str): None
+    +request_ai_completion(): None
   }
 }
 
