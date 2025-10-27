@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import QHBoxLayout, QLineEdit, QMainWindow, QPushButton, QSplitter, QVBoxLayout, QWidget
 
@@ -10,6 +10,8 @@ from views.folder_tree import FolderTree
 
 class MainWindow(QMainWindow):
     """アプリケーションのメインウィンドウ。"""
+
+    chat_submitted = Signal(str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """初期レイアウトを構築する。
@@ -116,7 +118,16 @@ class MainWindow(QMainWindow):
             return
 
         self.statusBar().showMessage(f"チャット送信: {text}", 2000)
+        self.chat_submitted.emit(text)
         self._chat_input.clear()
+
+    def show_chat_response(self, response: str) -> None:
+        """AIからの応答メッセージを表示する。"""
+        self.statusBar().showMessage(f"AI応答: {response}", 5000)
+
+    def show_chat_error(self, message: str) -> None:
+        """チャット処理で発生したエラーを表示する。"""
+        self.statusBar().showMessage(f"チャットエラー: {message}", 5000)
 
     @property
     def folder_view(self) -> FolderTree:

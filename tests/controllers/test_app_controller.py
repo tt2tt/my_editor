@@ -13,10 +13,45 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QTreeWidgetItem, QWidget
 
 from controllers.app_controller import AppController
+from controllers.ai_controller import AIController
 from controllers.event_bus import EventBus
 from controllers.file_controller import FileController
 from controllers.settings_controller import SettingsController
+from settings.model import SettingsModel
 from views.main_window import MainWindow
+from exceptions import AIIntegrationError
+
+
+class _StubSettingsModel:
+    """設定情報をメモリ上で保持するテスト用モデル。"""
+
+    def __init__(self) -> None:
+        self.api_key: str | None = "dummy-key"
+
+    def get_api_key(self) -> str | None:
+        return self.api_key
+
+    def set_api_key(self, key: str) -> None:
+        self.api_key = key
+
+
+class _StubAIController:
+    """AIコントローラの呼び出しを検証するスタブ。"""
+
+    def __init__(self) -> None:
+        self.received: list[str] = []
+        self.reset_called = False
+        self.response = "stub-response"
+        self.raise_error: Exception | None = None
+
+    def handle_chat_submit(self, message: str) -> str:
+        if self.raise_error is not None:
+            raise self.raise_error
+        self.received.append(message)
+        return self.response
+
+    def reset_client(self) -> None:
+        self.reset_called = True
 
 
 @pytest.fixture(name="qt_app")
@@ -66,10 +101,15 @@ class _StubSettingsController:
     def __init__(self, result: bool = True) -> None:
         self.result = result
         self.parent: QWidget | None = None
+        self._settings_model = _StubSettingsModel()
 
     def open_dialog(self, parent: QWidget | None = None) -> bool:
         self.parent = parent
         return self.result
+
+    @property
+    def model(self) -> SettingsModel:
+        return cast(SettingsModel, self._settings_model)
 
 
 def _build_controller(
@@ -79,16 +119,20 @@ def _build_controller(
     event_bus: EventBus | None = None,
     file_controller: FileController | None = None,
     settings_controller: SettingsController | None = None,
+    ai_controller: AIController | None = None,
 ) -> AppController:
     """テスト用のAppControllerを生成するヘルパー。"""
     bus = event_bus or EventBus()
+    ai_ctrl = ai_controller or cast(AIController, _StubAIController())
+    settings_ctrl = settings_controller or cast(SettingsController, _StubSettingsController())
     return AppController(
         qt_app,
         logging.getLogger("test.app_controller"),
         event_bus=bus,
         window_factory=lambda: main_window,
         file_controller=file_controller,
-        settings_controller=settings_controller,
+        settings_controller=settings_ctrl,
+        ai_controller=ai_ctrl,
     )
 
 
@@ -238,3 +282,81 @@ def test_open_action_triggers_file_controller(
     qt_app.processEvents()
 
     assert stub_controller.opened == [target]
+
+
+def test_chat_submission_delegates_to_ai_controller(
+    qt_app: QApplication,
+    main_window: MainWindow,
+) -> None:
+    """チャット送信がAIコントローラへ委譲されることを検証する。"""
+    ai_stub = _StubAIController()
+    _build_controller(
+        qt_app,
+        main_window,
+        ai_controller=cast(AIController, ai_stub),
+    )
+
+    main_window.chat_submitted.emit("こんにちは")
+    qt_app.processEvents()
+
+    assert ai_stub.received == ["こんにちは"]
+    assert main_window.statusBar().currentMessage() == "AI応答: stub-response"
+
+
+def test_chat_error_displays_status_message(
+    qt_app: QApplication,
+    main_window: MainWindow,
+) -> None:
+    """AI呼び出しで例外が発生した場合にエラーメッセージが表示されることを検証する。"""
+    ai_stub = _StubAIController()
+    ai_stub.raise_error = AIIntegrationError("APIキーが未設定です。")
+    _build_controller(
+        qt_app,
+        main_window,
+        ai_controller=cast(AIController, ai_stub),
+    )
+
+    main_window.chat_submitted.emit("テスト")
+    qt_app.processEvents()
+
+    assert main_window.statusBar().currentMessage() == "チャットエラー: APIキーが未設定です。"
+
+
+def test_settings_acceptation_resets_ai_client(
+    qt_app: QApplication,
+    main_window: MainWindow,
+) -> None:
+    """設定保存後にAIクライアントがリセットされることを検証する。"""
+    ai_stub = _StubAIController()
+    stub_settings = _StubSettingsController(result=True)
+    _build_controller(
+        qt_app,
+        main_window,
+        settings_controller=cast(SettingsController, stub_settings),
+        ai_controller=cast(AIController, ai_stub),
+    )
+
+    main_window.action_open_settings.trigger()
+    qt_app.processEvents()
+
+    assert ai_stub.reset_called is True
+
+
+def test_settings_cancel_does_not_reset_ai_client(
+    qt_app: QApplication,
+    main_window: MainWindow,
+) -> None:
+    """設定ダイアログがキャンセルされた場合にAIクライアントが保持されることを検証する。"""
+    ai_stub = _StubAIController()
+    stub_settings = _StubSettingsController(result=False)
+    _build_controller(
+        qt_app,
+        main_window,
+        settings_controller=cast(SettingsController, stub_settings),
+        ai_controller=cast(AIController, ai_stub),
+    )
+
+    main_window.action_open_settings.trigger()
+    qt_app.processEvents()
+
+    assert ai_stub.reset_called is False

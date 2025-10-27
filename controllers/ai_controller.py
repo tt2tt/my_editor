@@ -4,6 +4,7 @@ import logging
 from typing import Any, Iterable, Iterator, Optional, Protocol
 
 from exceptions import AIIntegrationError
+from settings.model import SettingsModel
 
 
 class AIClientProtocol(Protocol):
@@ -25,11 +26,14 @@ class AIController:
         *,
         model: str = "gpt-4o-mini",
         logger: Optional[logging.Logger] = None,
+        settings_model: Optional[SettingsModel] = None,
     ) -> None:
         """コントローラの依存を初期化する。"""
-        self._client = client or _build_default_client()
-        self._model = model
         self._logger = logger or logging.getLogger("my_editor.ai_controller")
+        self._settings_model = settings_model
+        self._client: Optional[AIClientProtocol] = client
+        self._client_provided = client is not None
+        self._model = model
 
     def generate_code(self, prompt: str) -> str:
         """コード生成リクエストを実行し、結果文字列を返す。"""
@@ -39,7 +43,7 @@ class AIController:
 
         self._logger.info("コード生成リクエストを送信します。")
         try:
-            result = self._client.generate(self._model, prompt)
+            result = self._get_client().generate(self._model, prompt)
         except Exception as exc:  # pylint: disable=broad-except
             self._logger.error("コード生成に失敗しました。", exc_info=exc)
             raise AIIntegrationError("コード生成に失敗しました。") from exc
@@ -55,7 +59,7 @@ class AIController:
 
         self._logger.info("チャットストリームを開始します。")
         try:
-            for chunk in self._client.stream(self._model, prompt):
+            for chunk in self._get_client().stream(self._model, prompt):
                 if chunk:
                     yield chunk
         except Exception as exc:  # pylint: disable=broad-except
@@ -72,7 +76,7 @@ class AIController:
 
         self._logger.info("チャット補完リクエストを送信します。")
         try:
-            response = self._client.generate(self._model, normalized)
+            response = self._get_client().generate(self._model, normalized)
         except Exception as exc:  # pylint: disable=broad-except
             self._logger.error("チャット応答の生成に失敗しました。", exc_info=exc)
             raise AIIntegrationError("チャット応答の生成に失敗しました。") from exc
@@ -80,15 +84,39 @@ class AIController:
         self._logger.info("チャット応答を受信しました。")
         return response
 
+    def reset_client(self) -> None:
+        """内部で保持しているクライアントを再生成できるようリセットする。"""
+        if self._client_provided:
+            self._logger.debug("外部提供のクライアントはリセット対象外です。")
+            return
+        self._client = None
 
-def _build_default_client() -> AIClientProtocol:
-    """OpenAIクライアントが利用可能であればアダプターを生成する。"""
-    try:
-        from openai import OpenAI  # type: ignore
-    except ImportError as exc:  # pragma: no cover - 実運用依存
-        raise AIIntegrationError("openaiパッケージがインストールされていません。") from exc
+    def _get_client(self) -> AIClientProtocol:
+        """利用可能なAIクライアントを取得する。"""
+        if self._client is None:
+            self._client = self._build_default_client()
+        return self._client
 
-    return _OpenAIClientAdapter(OpenAI())
+    def _build_default_client(self) -> AIClientProtocol:
+        """設定モデルからAPIキーを読み取りクライアントを生成する。"""
+        if self._settings_model is None:
+            raise AIIntegrationError("設定モデルが提供されていません。")
+
+        try:
+            api_key = self._settings_model.get_api_key()
+        except Exception as exc:  # noqa: BLE001
+            self._logger.error("APIキーの取得に失敗しました。", exc_info=exc)
+            raise AIIntegrationError("APIキーの取得に失敗しました。") from exc
+
+        if not api_key:
+            raise AIIntegrationError("OpenAI APIキーが設定されていません。")
+
+        try:
+            from openai import OpenAI  # type: ignore
+        except ImportError as exc:  # pragma: no cover - 実運用依存
+            raise AIIntegrationError("openaiパッケージがインストールされていません。") from exc
+
+        return _OpenAIClientAdapter(OpenAI(api_key=api_key))
 
 
 class _OpenAIClientAdapter:

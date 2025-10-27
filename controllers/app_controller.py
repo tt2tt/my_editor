@@ -7,6 +7,7 @@ from typing import Callable, Optional
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QFileDialog
 
+from controllers.ai_controller import AIController
 from controllers.event_bus import EventBus, Payload
 from controllers.file_controller import FileController
 from controllers.folder_controller import FolderController
@@ -17,7 +18,7 @@ from models.folder_model import FolderModel
 from models.tab_model import TabState
 from views.folder_tree import FolderTree
 from views.main_window import MainWindow
-from exceptions import FileOperationError
+from exceptions import FileOperationError, AIIntegrationError
 
 
 class AppController:
@@ -39,6 +40,7 @@ class AppController:
         folder_controller: Optional[FolderController] = None,
         settings_controller: Optional[SettingsController] = None,
         tab_controller: Optional[TabController] = None,
+        ai_controller: Optional[AIController] = None,
     ) -> None:
         """依存オブジェクトを受け取り初期化する。
 
@@ -61,6 +63,7 @@ class AppController:
         self._folder_controller = folder_controller
         self._settings_controller = settings_controller
         self._tab_controller = tab_controller
+        self._ai_controller = ai_controller
         self._tab_state: Optional[TabState] = None
 
         # メインウィンドウを構築する。
@@ -115,6 +118,14 @@ class AppController:
                 logger=self._logger.getChild("settings_controller")
             )
 
+        settings_model = getattr(self._settings_controller, "model", None)
+
+        if self._ai_controller is None:
+            self._ai_controller = AIController(
+                logger=self._logger.getChild("ai_controller"),
+                settings_model=settings_model,
+            )
+
         open_action = getattr(self._window, "action_open_file", None)
         if open_action is not None:
             open_action.triggered.connect(self._handle_open_file_action)
@@ -134,6 +145,10 @@ class AppController:
         settings_action = getattr(self._window, "action_open_settings", None)
         if settings_action is not None:
             settings_action.triggered.connect(self._handle_open_settings_action)
+
+        chat_signal = getattr(self._window, "chat_submitted", None)
+        if chat_signal is not None:
+            chat_signal.connect(self._handle_chat_submitted)
 
     def _wire_events(self) -> None:
         """ビューシグナルとイベントバスの結線、およびハンドラ購読を設定する。"""
@@ -273,8 +288,41 @@ class AppController:
 
         if accepted:
             self._logger.info("設定ダイアログで変更が保存されました。")
+            if self._ai_controller is not None:
+                self._ai_controller.reset_client()
         else:
             self._logger.debug("設定ダイアログはキャンセルされました。")
+
+    def _handle_chat_submitted(self, message: str) -> None:
+        """チャット入力をAIコントローラへ委譲する。"""
+        trimmed = message.strip()
+
+        if not trimmed:
+            if self._window is not None:
+                self._window.show_chat_error("メッセージを入力してください。")
+            return
+
+        if self._ai_controller is None:
+            self._logger.warning("AIコントローラが未設定のためチャットを処理できません。")
+            if self._window is not None:
+                self._window.show_chat_error("AI機能が利用できません。")
+            return
+
+        try:
+            response = self._ai_controller.handle_chat_submit(trimmed)
+        except AIIntegrationError as exc:
+            self._logger.error("AI応答の取得に失敗しました。", exc_info=exc)
+            if self._window is not None:
+                self._window.show_chat_error(str(exc))
+            return
+        except Exception:  # noqa: BLE001
+            self._logger.exception("チャット処理中に予期せぬ例外が発生しました。")
+            if self._window is not None:
+                self._window.show_chat_error("AI応答の取得中にエラーが発生しました。")
+            return
+
+        if self._window is not None:
+            self._window.show_chat_response(response)
 
     def _prompt_file_to_open(self) -> Optional[Path]:
         """ファイルを開く際の選択ダイアログを表示する。"""
@@ -379,3 +427,8 @@ class AppController:
     def tab_controller(self) -> Optional[TabController]:
         """現在のタブコントローラを返す。"""
         return self._tab_controller
+
+    @property
+    def ai_controller(self) -> Optional[AIController]:
+        """現在のAIコントローラを返す。"""
+        return self._ai_controller

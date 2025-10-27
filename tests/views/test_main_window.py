@@ -49,7 +49,10 @@ def test_main_window_builds_layout(main_window: MainWindow) -> None:
 
 def test_chat_input_clear_on_send(main_window: MainWindow, qt_app: QApplication) -> None:
     """送信操作でチャット入力がクリアされることを検証する。"""
+    captured: list[str] = []
+    main_window.chat_submitted.connect(captured.append)
     main_window.chat_input.setText("hello")
     QTest.mouseClick(main_window.send_button, Qt.MouseButton.LeftButton)
     qt_app.processEvents()
     assert main_window.chat_input.text() == ""
+    assert captured == ["hello"]
