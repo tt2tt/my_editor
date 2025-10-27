@@ -91,13 +91,13 @@
 	- テスト: `tests/controllers/test_app_controller.py::test_open_action_triggers_file_controller`
 
 フェーズ6: コーディングサポート統合
-23. OpenAI設定画面 (`views/settings_dialog.py`)
+23. [済] OpenAI設定画面 (`views/settings_dialog.py`)
 	- 関数: `SettingsDialog.__init__`, `SettingsDialog._bind_actions()`
 	- テスト: `tests/views/test_settings_dialog.py::test_save_triggers_model`
-24. APIキー永続化 (`controllers/settings_controller.py`)
-	- 関数: `load_settings_into_dialog()`, `save_settings_from_dialog()`
-	- QSettings利用で暗号化ストレージ検討
-	- テスト: `tests/controllers/test_settings_controller.py::test_save_settings_calls_model`
+24. [済] APIキー永続化 (`controllers/settings_controller.py`)
+ 	- 関数: `SettingsController.load_settings_into_dialog()`, `SettingsController.save_settings_from_dialog()`
+ 	- QSettings利用で暗号化ストレージ検討
+ 	- テスト: `tests/controllers/test_settings_controller.py::test_save_settings_calls_model`
 25. チャット連携 (`controllers/ai_controller.py`)
 	- 関数: `handle_chat_submit(message: str)`
 	- ビュー更新とAPIレスポンス整形

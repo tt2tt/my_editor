@@ -19,8 +19,7 @@ class _StubSettingsModel(SettingsModel):
     """APIキーの保存呼び出しを記録するテスト用スタブ。"""
 
     def __init__(self, initial_key: str | None = None) -> None:
-        # 親クラスのストレージアクセスを発生させないためダミーパスを設定する。
-        self._storage_path = Path("dummy.json")
+        super().__init__(storage_path=Path("dummy_settings.json"))
         self.saved_key: str | None = None
         self._initial_key = initial_key
 
