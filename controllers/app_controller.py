@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QApplication, QFileDialog
 from controllers.event_bus import EventBus, Payload
 from controllers.file_controller import FileController
 from controllers.folder_controller import FolderController
+from controllers.settings_controller import SettingsController
 from controllers.tab_controller import TabController
 from models.file_model import FileModel
 from models.folder_model import FolderModel
@@ -36,6 +37,7 @@ class AppController:
         window_factory: Optional[Callable[[], MainWindow]] = None,
         file_controller: Optional[FileController] = None,
         folder_controller: Optional[FolderController] = None,
+        settings_controller: Optional[SettingsController] = None,
         tab_controller: Optional[TabController] = None,
     ) -> None:
         """依存オブジェクトを受け取り初期化する。
@@ -57,6 +59,7 @@ class AppController:
         self._window: Optional[MainWindow] = None
         self._file_controller = file_controller
         self._folder_controller = folder_controller
+        self._settings_controller = settings_controller
         self._tab_controller = tab_controller
         self._tab_state: Optional[TabState] = None
 
@@ -107,6 +110,11 @@ class AppController:
                 logger=self._logger.getChild("folder_controller"),
             )
 
+        if self._settings_controller is None:
+            self._settings_controller = SettingsController(
+                logger=self._logger.getChild("settings_controller")
+            )
+
         open_action = getattr(self._window, "action_open_file", None)
         if open_action is not None:
             open_action.triggered.connect(self._handle_open_file_action)
@@ -122,6 +130,10 @@ class AppController:
         close_action = getattr(self._window, "action_close_tab", None)
         if close_action is not None:
             close_action.triggered.connect(self._handle_close_tab_action)
+
+        settings_action = getattr(self._window, "action_open_settings", None)
+        if settings_action is not None:
+            settings_action.triggered.connect(self._handle_open_settings_action)
 
     def _wire_events(self) -> None:
         """ビューシグナルとイベントバスの結線、およびハンドラ購読を設定する。"""
@@ -243,6 +255,27 @@ class AppController:
         else:
             self._logger.info("タブを閉じました: %s", closed_path)
 
+    def _handle_open_settings_action(self) -> None:
+        """設定ダイアログを開くアクションを処理する。"""
+        if self._settings_controller is None:
+            self._logger.warning("設定コントローラが未設定のためダイアログを開けません。")
+            return
+
+        if self._window is None:
+            self._logger.warning("ウィンドウが初期化されていないため設定を開けません。")
+            return
+
+        try:
+            accepted = self._settings_controller.open_dialog(parent=self._window)
+        except Exception:  # noqa: BLE001
+            self._logger.exception("設定ダイアログの表示中に例外が発生しました。")
+            return
+
+        if accepted:
+            self._logger.info("設定ダイアログで変更が保存されました。")
+        else:
+            self._logger.debug("設定ダイアログはキャンセルされました。")
+
     def _prompt_file_to_open(self) -> Optional[Path]:
         """ファイルを開く際の選択ダイアログを表示する。"""
         if self._window is None:
@@ -336,6 +369,11 @@ class AppController:
     def folder_controller(self) -> Optional[FolderController]:
         """現在のフォルダコントローラを返す。"""
         return self._folder_controller
+
+    @property
+    def settings_controller(self) -> Optional[SettingsController]:
+        """現在の設定コントローラを返す。"""
+        return self._settings_controller
 
     @property
     def tab_controller(self) -> Optional[TabController]:

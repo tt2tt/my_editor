@@ -105,6 +105,10 @@ class MainWindow(QMainWindow):
         self._action_close_tab.setShortcut(QKeySequence.StandardKey.Close)
         file_menu.addAction(self._action_close_tab)
 
+        self._action_open_settings = QAction("OpenAI設定...", self)
+        self._action_open_settings.setShortcut(QKeySequence.StandardKey.Preferences)
+        file_menu.addAction(self._action_open_settings)
+
     def _handle_chat_submit(self) -> None:
         """チャット入力の送信要求を処理する。"""
         text = self._chat_input.text().strip()
@@ -158,3 +162,8 @@ class MainWindow(QMainWindow):
     def action_open_folder(self) -> QAction:
         """フォルダを開くアクションを返す。"""
         return self._action_open_folder
+
+    @property
+    def action_open_settings(self) -> QAction:
+        """OpenAI設定を開くアクションを返す。"""
+        return self._action_open_settings

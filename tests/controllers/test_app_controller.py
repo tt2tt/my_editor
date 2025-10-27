@@ -10,11 +10,12 @@ import pytest
 pytest.importorskip("PySide6")
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QTreeWidgetItem
+from PySide6.QtWidgets import QApplication, QTreeWidgetItem, QWidget
 
 from controllers.app_controller import AppController
 from controllers.event_bus import EventBus
 from controllers.file_controller import FileController
+from controllers.settings_controller import SettingsController
 from views.main_window import MainWindow
 
 
@@ -59,12 +60,25 @@ class _StubFileController:
         return None
 
 
+class _StubSettingsController:
+    """設定ダイアログ呼び出しを記録するスタブ。"""
+
+    def __init__(self, result: bool = True) -> None:
+        self.result = result
+        self.parent: QWidget | None = None
+
+    def open_dialog(self, parent: QWidget | None = None) -> bool:
+        self.parent = parent
+        return self.result
+
+
 def _build_controller(
     qt_app: QApplication,
     main_window: MainWindow,
     *,
     event_bus: EventBus | None = None,
     file_controller: FileController | None = None,
+    settings_controller: SettingsController | None = None,
 ) -> AppController:
     """テスト用のAppControllerを生成するヘルパー。"""
     bus = event_bus or EventBus()
@@ -74,6 +88,7 @@ def _build_controller(
         event_bus=bus,
         window_factory=lambda: main_window,
         file_controller=file_controller,
+        settings_controller=settings_controller,
     )
 
 
@@ -137,6 +152,24 @@ def test_folder_selection_opens_file(
     qt_app.processEvents()
 
     assert stub_controller.opened == [target]
+
+
+def test_settings_action_opens_dialog(
+    qt_app: QApplication,
+    main_window: MainWindow,
+) -> None:
+    """設定アクションが設定ダイアログを開くことを検証する。"""
+    stub_settings = _StubSettingsController(result=True)
+    _build_controller(
+        qt_app,
+        main_window,
+        settings_controller=cast(SettingsController, stub_settings),
+    )
+
+    main_window.action_open_settings.trigger()
+    qt_app.processEvents()
+
+    assert stub_settings.parent is main_window
 
 
 def test_wire_events_handles_save_request(
