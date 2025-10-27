@@ -81,6 +81,7 @@ class _StubFileController:
         self.opened: list[Path] = []
         self.closed = False
         self._save_result = save_result
+        self.new_file_calls = 0
 
     def save_current_file(self) -> Path | None:
         self.invoked = True
@@ -93,6 +94,10 @@ class _StubFileController:
     def close_current_tab(self) -> Path | None:
         self.closed = True
         return None
+
+    def create_new_file(self) -> Path:
+        self.new_file_calls += 1
+        return Path(f"untitled-{self.new_file_calls}.txt")
 
 
 class _StubSettingsController:
@@ -150,6 +155,24 @@ def test_wire_events_emits_tab_change(
 
     assert received
     assert received[0] == {"index": 3, "tab_count": main_window.tab_widget.count()}
+
+
+def test_new_action_triggers_blank_file(
+    qt_app: QApplication,
+    main_window: MainWindow,
+) -> None:
+    """新規ファイルアクションでファイルコントローラの処理が呼び出されることを検証する。"""
+    stub_controller = _StubFileController(save_result=None)
+    _build_controller(
+        qt_app,
+        main_window,
+        file_controller=cast(FileController, stub_controller),
+    )
+
+    main_window.action_new_file.trigger()
+    qt_app.processEvents()
+
+    assert stub_controller.new_file_calls == 1
 
 
 def test_wire_events_emits_folder_selection(

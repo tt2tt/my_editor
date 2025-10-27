@@ -130,6 +130,10 @@ class AppController:
         if open_action is not None:
             open_action.triggered.connect(self._handle_open_file_action)
 
+        new_action = getattr(self._window, "action_new_file", None)
+        if new_action is not None:
+            new_action.triggered.connect(self._handle_new_file_action)
+
         open_folder_action = getattr(self._window, "action_open_folder", None)
         if open_folder_action is not None:
             open_folder_action.triggered.connect(self._handle_open_folder_action)
@@ -234,6 +238,17 @@ class AppController:
             self._file_controller.open_file(selected)
         except Exception:  # noqa: BLE001
             self._logger.exception("ファイルを開く処理中に例外が発生しました。")
+
+    def _handle_new_file_action(self) -> None:
+        """新規ファイル作成アクションを処理する。"""
+        if self._file_controller is None:
+            self._logger.warning("ファイルコントローラが未設定のため新規作成を処理できません。")
+            return
+
+        try:
+            self._file_controller.create_new_file()
+        except Exception:  # noqa: BLE001
+            self._logger.exception("新規ファイル作成中に例外が発生しました。")
 
     def _handle_open_folder_action(self) -> None:
         """フォルダを開くアクションを処理する。"""

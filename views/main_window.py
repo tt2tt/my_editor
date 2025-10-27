@@ -91,6 +91,10 @@ class MainWindow(QMainWindow):
         menu_bar = self.menuBar()
         file_menu = menu_bar.addMenu("ファイル")
 
+        self._action_new_file = QAction("新規ファイル", self)
+        self._action_new_file.setShortcut(QKeySequence.StandardKey.New)
+        file_menu.addAction(self._action_new_file)
+
         self._action_open_file = QAction("開く...", self)
         self._action_open_file.setShortcut(QKeySequence.StandardKey.Open)
         file_menu.addAction(self._action_open_file)
@@ -158,6 +162,11 @@ class MainWindow(QMainWindow):
     def action_open_file(self) -> QAction:
         """ファイルを開くアクションを返す。"""
         return self._action_open_file
+
+    @property
+    def action_new_file(self) -> QAction:
+        """新規ファイルを作成するアクションを返す。"""
+        return self._action_new_file
 
     @property
     def action_save_file(self) -> QAction:

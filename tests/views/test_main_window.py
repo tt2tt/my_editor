@@ -43,6 +43,7 @@ def test_main_window_builds_layout(main_window: MainWindow) -> None:
     folder = main_window.folder_view
     assert isinstance(folder, FolderTree)
     assert isinstance(main_window.tab_widget, EditorTabWidget)
+    assert main_window.action_new_file.text() == "新規ファイル"
     assert main_window.action_open_settings.text() == "OpenAI設定..."
     assert main_window.tab_widget.count() == 0
 
