@@ -29,6 +29,7 @@
 フェーズ6
 23. OpenAI設定画面 (`views/settings_dialog.py`) 〇 2025-10-27 完了
 24. APIキー永続化 (`controllers/settings_controller.py`, `tests/controllers/test_settings_controller.py`) 〇 2025-10-27 完了
+25. チャット連携 (`controllers/ai_controller.py`, `tests/controllers/test_ai_controller.py`) 〇 2025-10-27 完了
 フェーズ8
 28. 型チェック (`mypy.ini`) と `mypy` 対応 〇 2025-10-25 完了
 29. GitHub Actions CI構築 (`.github/workflows/ci.yml`) 〇 2025-10-25 完了

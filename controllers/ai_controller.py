@@ -64,6 +64,22 @@ class AIController:
 
         self._logger.info("チャットストリームが終了しました。")
 
+    def handle_chat_submit(self, message: str) -> str:
+        """チャットメッセージを送信して応答を取得する。"""
+        normalized = message.strip()
+        if not normalized:
+            raise ValueError("メッセージが空です。")
+
+        self._logger.info("チャット補完リクエストを送信します。")
+        try:
+            response = self._client.generate(self._model, normalized)
+        except Exception as exc:  # pylint: disable=broad-except
+            self._logger.error("チャット応答の生成に失敗しました。", exc_info=exc)
+            raise AIIntegrationError("チャット応答の生成に失敗しました。") from exc
+
+        self._logger.info("チャット応答を受信しました。")
+        return response
+
 
 def _build_default_client() -> AIClientProtocol:
     """OpenAIクライアントが利用可能であればアダプターを生成する。"""
