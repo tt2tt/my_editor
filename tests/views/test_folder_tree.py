@@ -77,3 +77,22 @@ def test_select_path_missing_raises(qt_app: QApplication, tmp_path: Path) -> Non
 
     with pytest.raises(Exception):
         tree.select_path(tmp_path / "missing")
+
+
+def test_rename_path_updates_tree(qt_app: QApplication, tmp_path: Path) -> None:
+    """rename_pathが表示名と内部マッピングを更新することを検証する。"""
+    tree = FolderTree()
+    nodes = _build_nodes(tmp_path)
+    tree.populate(nodes)
+
+    original = tmp_path / "README.md"
+    renamed = tmp_path / "CHANGELOG.md"
+
+    tree.rename_path(original, renamed)
+
+    assert tree.topLevelItemCount() == 2
+    second_item = tree.topLevelItem(1)
+    assert second_item is not None
+    assert second_item.text(0) == "CHANGELOG.md"
+
+    tree.select_path(renamed)

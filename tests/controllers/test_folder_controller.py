@@ -152,3 +152,58 @@ def test_apply_context_action(qt_app: QApplication, tmp_path: Path) -> None:
     assert captured
     assert captured[0][0] == "create_file"
     assert captured[0][1] == root.resolve()
+
+
+def test_handle_rename_file_updates_view(qt_app: QApplication, tmp_path: Path) -> None:
+    """ファイルの名称変更でファイルシステムとビューが更新されることを検証する。"""
+    root = tmp_path / "workspace"
+    root.mkdir()
+    target = root / "old.txt"
+    target.write_text("content", encoding="utf-8")
+
+    tree = FolderTree()
+    controller = FolderController(FolderModel(), tree)
+    controller.load_initial_tree(root)
+
+    controller._prompt_new_name = lambda _: "renamed.txt"  # type: ignore[assignment]
+
+    result = controller.handle_rename(target)
+
+    assert result == root / "renamed.txt"
+    assert result is not None
+    assert result.exists()
+    assert not target.exists()
+
+    tree.select_path(result)
+    current = tree.currentItem()
+    assert current is not None
+    assert current.text(0) == "renamed.txt"
+
+
+def test_handle_rename_directory_updates_children(qt_app: QApplication, tmp_path: Path) -> None:
+    """フォルダの名称変更で子要素のパスが維持されることを検証する。"""
+    root = tmp_path / "workspace"
+    root.mkdir()
+    source_dir = root / "src"
+    source_dir.mkdir()
+    child_file = source_dir / "main.py"
+    child_file.write_text("print('ok')", encoding="utf-8")
+
+    tree = FolderTree()
+    controller = FolderController(FolderModel(), tree)
+    controller.load_initial_tree(root)
+
+    controller._prompt_new_name = lambda _: "package"  # type: ignore[assignment]
+
+    result = controller.handle_rename(source_dir)
+
+    expected_dir = root / "package"
+    assert result == expected_dir
+    assert expected_dir.exists()
+    assert not source_dir.exists()
+    assert (expected_dir / "main.py").exists()
+
+    tree.select_path(expected_dir / "main.py")
+    current = tree.currentItem()
+    assert current is not None
+    assert current.text(0) == "main.py"

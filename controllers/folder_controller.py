@@ -5,6 +5,8 @@ import logging
 from pathlib import Path
 from typing import Iterable, Optional
 
+from PySide6.QtWidgets import QInputDialog
+
 from exceptions import FileOperationError
 from models.folder_model import FolderModel
 from views.folder_tree import FolderNode, FolderTree
@@ -78,6 +80,45 @@ class FolderController:
         else:
             self._attempt_select(parent)
         self._logger.info("項目を削除しツリーを更新しました: %s", target)
+
+    def handle_rename(self, path: Path) -> Optional[Path]:
+        """ファイルまたはディレクトリの名称を変更する。"""
+        root = self._require_root()
+        target = self._normalize(path)
+
+        new_name = self._prompt_new_name(target)
+        if new_name is None:
+            self._logger.debug("名称変更がキャンセルされました: %s", target)
+            return None
+
+        cleaned = new_name.strip()
+        if not cleaned:
+            self._logger.warning("空の名称が指定されたためリネームを中止します。")
+            return None
+        if any(separator in cleaned for separator in ("/", "\\")):
+            self._logger.warning("区切り文字を含む名称は指定できません: %s", cleaned)
+            return None
+
+        destination = target.parent / cleaned
+        if destination == target:
+            self._logger.debug("名称に変更が無いため処理をスキップします: %s", target)
+            return destination
+
+        self._folder_model.rename_item(target, destination)
+
+        try:
+            self._folder_view.rename_path(target, destination)
+        except FileOperationError as exc:
+            self._logger.warning("部分更新に失敗したため全体更新を実施します。", exc_info=exc)
+            self._rebuild_tree(select_path=destination)
+        else:
+            self._attempt_select(destination)
+
+        if target == root:
+            self._current_root = destination
+
+        self._logger.info("項目の名称を変更しました: %s -> %s", target, destination)
+        return destination
 
     def _insert_into_view(self, path: Path, *, is_dir: bool) -> None:
         """ビューへ新規ノードを追加する。"""
@@ -182,6 +223,9 @@ class FolderController:
             self.handle_delete(normalized)
             return normalized
 
+        if action == "rename":
+            return self.handle_rename(normalized)
+
         self._logger.warning("未知のコンテキストアクションが指定されました: %s", action)
         return None
 
@@ -196,3 +240,15 @@ class FolderController:
         while candidate.exists():
             candidate = directory / f"{base_name}{next(counter)}{suffix}"
         return candidate
+
+    def _prompt_new_name(self, target: Path) -> Optional[str]:
+        """名称変更時に利用者へ新しい名前を問い合わせる。"""
+        text, accepted = QInputDialog.getText(
+            self._folder_view,
+            "名前を変更",
+            "新しい名前を入力してください:",
+            text=target.name,
+        )
+        if not accepted:
+            return None
+        return str(text)

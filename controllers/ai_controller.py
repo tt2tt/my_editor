@@ -112,7 +112,7 @@ class AIController:
             raise AIIntegrationError("OpenAI APIキーが設定されていません。")
 
         try:
-            from openai import OpenAI  # type: ignore
+            from openai import OpenAI
         except ImportError as exc:  # pragma: no cover - 実運用依存
             raise AIIntegrationError("openaiパッケージがインストールされていません。") from exc
 
