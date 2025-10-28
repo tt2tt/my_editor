@@ -407,15 +407,31 @@ def test_chat_attachment_delegates_to_ai_controller(
     main_window.chat_attachment_requested.emit()
     qt_app.processEvents()
 
+    assert ai_stub.received == []
+    assert main_window.chat_panel.attachment_summary() == "添付ファイル: snippet.py"
+
+    input_field = main_window.chat_panel.findChild(QPlainTextEdit, "chatInput")
+    assert input_field is not None
+    input_field.setPlainText("解析をお願いします。")
+
+    result = main_window.chat_panel.request_ai_completion()
+    assert result == "解析をお願いします。"
+    qt_app.processEvents()
+
     assert ai_stub.received
     prompt = ai_stub.received[0]
+    assert "解析をお願いします。" in prompt
     assert "print('ok')" in prompt
     assert str(target) in prompt
 
     history = main_window.chat_panel.findChild(QPlainTextEdit, "chatHistory")
     assert history is not None
-    assert "ファイルを送信" in history.toPlainText()
+    history_lines = history.toPlainText().splitlines()
+    assert history_lines[0] == "ユーザー: 解析をお願いします。"
+    assert "添付ファイル: snippet.py" in history_lines
+
     assert main_window.statusBar().currentMessage() == "AI応答: stub-response"
+    assert main_window.chat_panel.attachment_summary() == ""
 
 
 def test_chat_attachment_cancelled_does_not_call_ai(
@@ -438,6 +454,7 @@ def test_chat_attachment_cancelled_does_not_call_ai(
 
     assert ai_stub.received == []
     assert main_window.statusBar().currentMessage() == "チャット: ファイル選択をキャンセルしました。"
+    assert main_window.chat_panel.attachment_summary() == ""
 
 
 def test_chat_attachment_read_error_displays_status(
@@ -469,3 +486,4 @@ def test_chat_attachment_read_error_displays_status(
 
     assert ai_stub.received == []
     assert main_window.statusBar().currentMessage() == "チャットエラー: 読み込みエラー"
+    assert main_window.chat_panel.attachment_summary() == ""

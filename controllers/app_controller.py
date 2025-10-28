@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Iterable, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QFileDialog
@@ -65,6 +65,7 @@ class AppController:
         self._tab_controller = tab_controller
         self._ai_controller = ai_controller
         self._tab_state: Optional[TabState] = None
+        self._pending_chat_attachments: list[tuple[Path, str]] = []
 
         # メインウィンドウを構築する。
         self._initialize_window()
@@ -327,8 +328,10 @@ class AppController:
                 self._window.show_chat_error("AI機能が利用できません。")
             return
 
+        prompt = self._compose_chat_prompt(trimmed, self._pending_chat_attachments)
+
         try:
-            response = self._ai_controller.handle_chat_submit(trimmed)
+            response = self._ai_controller.handle_chat_submit(prompt)
         except AIIntegrationError as exc:
             self._logger.error("AI応答の取得に失敗しました。", exc_info=exc)
             if self._window is not None:
@@ -340,6 +343,9 @@ class AppController:
                 self._window.show_chat_error("AI応答の取得中にエラーが発生しました。")
             return
 
+        self._pending_chat_attachments.clear()
+        if self._window is not None:
+            self._window.chat_panel.set_attachments([])
         if self._window is not None:
             self._window.show_chat_response(response)
 
@@ -368,26 +374,13 @@ class AppController:
                 self._window.show_chat_error(str(exc))
             return
 
-        prompt = self._build_chat_file_prompt(normalized, content)
-
+        self._pending_chat_attachments.append((normalized, content))
         if self._window is not None:
-            self._window.chat_panel.append_user_message(f"ファイルを送信: {normalized.name}")
-
-        try:
-            response = self._ai_controller.handle_chat_submit(prompt)
-        except AIIntegrationError as exc:
-            self._logger.error("チャット添付の解析に失敗しました。", exc_info=exc)
-            if self._window is not None:
-                self._window.show_chat_error(str(exc))
-            return
-        except Exception:  # noqa: BLE001
-            self._logger.exception("チャット添付処理中に予期せぬ例外が発生しました。")
-            if self._window is not None:
-                self._window.show_chat_error("AI応答の取得中にエラーが発生しました。")
-            return
-
-        if self._window is not None:
-            self._window.show_chat_response(response)
+            self._window.chat_panel.set_attachments(path for path, _ in self._pending_chat_attachments)
+            self._window.statusBar().showMessage(
+                f"チャット: '{normalized.name}' を添付しました。",
+                3000,
+            )
 
     def _read_text_for_chat(self, path: Path) -> str:
         """チャット添付用にテキストファイルを読み込む。"""
@@ -411,14 +404,17 @@ class AppController:
         self._logger.error("チャット添付ファイルの読み込みで利用可能なエンコーディングが見つかりません: %s", path)
         raise FileOperationError(f"ファイルの読み込みに失敗しました: {path}")
 
-    @staticmethod
-    def _build_chat_file_prompt(path: Path, content: str) -> str:
-        """ファイル内容をAIへのプロンプト形式へ整形する。"""
-        display_path = str(path)
-        header = f"以下はファイル {display_path} の内容です。解析と回答をお願いします。"
-        divider = f"----- ファイル開始 ({path.name}) -----"
-        footer = f"----- ファイル終了 ({path.name}) -----"
-        return f"{header}\n{divider}\n{content}\n{footer}"
+    def _compose_chat_prompt(self, message: str, attachments: Iterable[tuple[Path, str]]) -> str:
+        """メッセージと添付ファイル内容をまとめたプロンプトを生成する。"""
+        segments = [message]
+
+        for path, content in attachments:
+            display_path = str(path)
+            divider = f"----- ファイル開始 ({path.name}) -----"
+            footer = f"----- ファイル終了 ({path.name}) -----"
+            segments.append(f"以下はファイル {display_path} の内容です。\n{divider}\n{content}\n{footer}")
+
+        return "\n\n".join(segments)
 
     def _prompt_file_to_open(self) -> Optional[Path]:
         """ファイルを開く際の選択ダイアログを表示する。"""

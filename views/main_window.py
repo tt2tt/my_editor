@@ -112,8 +112,14 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("チャットエラー: メッセージを入力してください。", 3000)
             return
 
-        self._chat_panel.append_user_message(text)
-        self.statusBar().showMessage(f"チャット送信: {text}", 2000)
+        summary = self._chat_panel.attachment_summary()
+        display_text = f"{text}\n{summary}" if summary else text
+
+        self._chat_panel.append_user_message(display_text)
+        status = f"チャット送信: {text}"
+        if summary:
+            status = f"{status} ({summary})"
+        self.statusBar().showMessage(status, 2000)
         self.chat_submitted.emit(text)
 
     def show_chat_response(self, response: str) -> None:

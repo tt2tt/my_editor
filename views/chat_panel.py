@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from pathlib import Path
+from typing import Iterable, Optional
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
+    QLabel,
     QPlainTextEdit,
     QPushButton,
     QSplitter,
@@ -33,6 +35,9 @@ class ChatPanel(QWidget):
         self._attach_button.setObjectName("chatAttachButton")
         self._request_button = QPushButton("送信", self)
         self._request_button.setObjectName("chatRequestButton")
+        self._attachment_label = QLabel("添付ファイル: なし", self)
+        self._attachment_label.setObjectName("chatAttachmentLabel")
+        self._attachment_paths: list[Path] = []
 
         self._build_layout()
         self._connect_signals()
@@ -59,8 +64,8 @@ class ChatPanel(QWidget):
 
     def _build_layout(self) -> None:
         """ウィジェット構成を初期化する。"""
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        root_layout = QVBoxLayout(self)
+        root_layout.setContentsMargins(0, 0, 0, 0)
 
         splitter = QSplitter(Qt.Orientation.Vertical, self)
         splitter.setObjectName("chatSplitter")
@@ -68,18 +73,26 @@ class ChatPanel(QWidget):
         splitter.addWidget(self._history)
 
         input_container = QWidget(splitter)
-        input_layout = QHBoxLayout(input_container)
+        input_layout = QVBoxLayout(input_container)
         input_layout.setContentsMargins(0, 0, 0, 0)
         input_layout.setSpacing(4)
         input_layout.addWidget(self._input_field)
-        input_layout.addWidget(self._attach_button)
-        input_layout.addWidget(self._request_button)
+
+        button_row = QHBoxLayout()
+        button_row.setContentsMargins(0, 0, 0, 0)
+        button_row.setSpacing(4)
+        button_row.addStretch(1)
+        button_row.addWidget(self._attach_button)
+        button_row.addWidget(self._request_button)
+
+        input_layout.addLayout(button_row)
+        input_layout.addWidget(self._attachment_label)
 
         splitter.addWidget(input_container)
         splitter.setStretchFactor(0, 3)
         splitter.setStretchFactor(1, 1)
 
-        layout.addWidget(splitter)
+        root_layout.addWidget(splitter)
         self._splitter = splitter
 
     def _connect_signals(self) -> None:
@@ -97,4 +110,21 @@ class ChatPanel(QWidget):
         """ファイル添付ボタンの操作を通知する。"""
         self.attachment_requested.emit()
         self._logger.info("チャット添付リクエストを送信しました。")
+
+    def set_attachments(self, paths: Iterable[Path]) -> None:
+        """添付中のファイルパス一覧を表示に反映する。"""
+        self._attachment_paths = [Path(path) for path in paths]
+        if self._attachment_paths:
+            joined = ", ".join(path.name for path in self._attachment_paths)
+            label = f"添付ファイル: {joined}"
+        else:
+            label = "添付ファイル: なし"
+        self._attachment_label.setText(label)
+
+    def attachment_summary(self) -> str:
+        """現在の添付ファイルを履歴表示用に整形して返す。"""
+        if not self._attachment_paths:
+            return ""
+        joined = ", ".join(path.name for path in self._attachment_paths)
+        return f"添付ファイル: {joined}"
 
