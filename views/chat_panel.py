@@ -3,11 +3,12 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QPlainTextEdit,
     QPushButton,
+    QSplitter,
     QVBoxLayout,
     QWidget,
 )
@@ -24,6 +25,7 @@ class ChatPanel(QWidget):
         self._history = QPlainTextEdit(self)
         self._history.setObjectName("chatHistory")
         self._history.setReadOnly(True)
+        self._history.setMinimumHeight(80)
         self._input_field = QPlainTextEdit(self)
         self._input_field.setObjectName("chatInput")
         self._request_button = QPushButton("送信", self)
@@ -56,12 +58,25 @@ class ChatPanel(QWidget):
         """ウィジェット構成を初期化する。"""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self._history)
 
-        input_row = QHBoxLayout()
-        input_row.addWidget(self._input_field)
-        input_row.addWidget(self._request_button)
-        layout.addLayout(input_row)
+        splitter = QSplitter(Qt.Orientation.Vertical, self)
+        splitter.setObjectName("chatSplitter")
+
+        splitter.addWidget(self._history)
+
+        input_container = QWidget(splitter)
+        input_layout = QHBoxLayout(input_container)
+        input_layout.setContentsMargins(0, 0, 0, 0)
+        input_layout.setSpacing(4)
+        input_layout.addWidget(self._input_field)
+        input_layout.addWidget(self._request_button)
+
+        splitter.addWidget(input_container)
+        splitter.setStretchFactor(0, 3)
+        splitter.setStretchFactor(1, 1)
+
+        layout.addWidget(splitter)
+        self._splitter = splitter
 
     def _connect_signals(self) -> None:
         """内部シグナルの接続を行う。"""

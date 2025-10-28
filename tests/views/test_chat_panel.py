@@ -6,7 +6,8 @@ import pytest
 
 pytest.importorskip("PySide6")
 
-from PySide6.QtWidgets import QApplication, QPlainTextEdit
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QPlainTextEdit, QSplitter
 
 from views.chat_panel import ChatPanel
 
@@ -24,6 +25,10 @@ def fixture_qt_app() -> Generator[QApplication, None, None]:
 def test_append_messages(qt_app: QApplication) -> None:
     """append系メソッドで履歴が正しく更新されることを検証する。"""
     panel = ChatPanel()
+
+    splitter = panel.findChild(QSplitter, "chatSplitter")
+    assert splitter is not None
+    assert splitter.orientation() == Qt.Orientation.Vertical
 
     panel.append_user_message("こんにちは")
     panel.append_ai_message("了解しました")
