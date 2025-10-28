@@ -18,6 +18,7 @@ class ChatPanel(QWidget):
     """チャットメッセージを表示し、AIへのリクエストを送信するパネル。"""
 
     completion_requested = Signal(str)
+    attachment_requested = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None, *, logger: Optional[logging.Logger] = None) -> None:
         super().__init__(parent)
@@ -28,6 +29,8 @@ class ChatPanel(QWidget):
         self._history.setMinimumHeight(80)
         self._input_field = QPlainTextEdit(self)
         self._input_field.setObjectName("chatInput")
+        self._attach_button = QPushButton("ファイル添付", self)
+        self._attach_button.setObjectName("chatAttachButton")
         self._request_button = QPushButton("送信", self)
         self._request_button.setObjectName("chatRequestButton")
 
@@ -69,6 +72,7 @@ class ChatPanel(QWidget):
         input_layout.setContentsMargins(0, 0, 0, 0)
         input_layout.setSpacing(4)
         input_layout.addWidget(self._input_field)
+        input_layout.addWidget(self._attach_button)
         input_layout.addWidget(self._request_button)
 
         splitter.addWidget(input_container)
@@ -81,10 +85,16 @@ class ChatPanel(QWidget):
     def _connect_signals(self) -> None:
         """内部シグナルの接続を行う。"""
         self._request_button.clicked.connect(self.request_ai_completion)
+        self._attach_button.clicked.connect(self.request_file_attachment)
 
     def _append_message(self, speaker: str, text: str) -> None:
         """スピーカー名付きでメッセージを記録する。"""
         formatted = f"{speaker}: {text}"
         self._history.appendPlainText(formatted)
         self._logger.info("%sメッセージを記録しました。", speaker)
+
+    def request_file_attachment(self) -> None:
+        """ファイル添付ボタンの操作を通知する。"""
+        self.attachment_requested.emit()
+        self._logger.info("チャット添付リクエストを送信しました。")
 

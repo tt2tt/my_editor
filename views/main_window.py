@@ -13,6 +13,7 @@ class MainWindow(QMainWindow):
     """アプリケーションのメインウィンドウ。"""
 
     chat_submitted = Signal(str)
+    chat_attachment_requested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """初期レイアウトを構築する。
@@ -73,6 +74,7 @@ class MainWindow(QMainWindow):
     def _connect_signals(self) -> None:
         """ウィジェット間のシグナルを接続する。"""
         self._chat_panel.completion_requested.connect(self._handle_chat_submit)
+        self._chat_panel.attachment_requested.connect(self._handle_chat_attachment_request)
 
     def _bind_actions(self) -> None:
         """メニューバーのアクションを初期化する。"""
@@ -123,6 +125,11 @@ class MainWindow(QMainWindow):
         """チャット処理で発生したエラーを表示する。"""
         self._chat_panel.append_ai_message(f"エラー: {message}")
         self.statusBar().showMessage(f"チャットエラー: {message}", 5000)
+
+    def _handle_chat_attachment_request(self) -> None:
+        """チャット添付リクエストを処理する。"""
+        self.statusBar().showMessage("チャット: ファイル選択を開始します。", 2000)
+        self.chat_attachment_requested.emit()
 
     @property
     def folder_view(self) -> FolderTree:

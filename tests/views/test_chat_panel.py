@@ -7,7 +7,7 @@ import pytest
 pytest.importorskip("PySide6")
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QPlainTextEdit, QSplitter
+from PySide6.QtWidgets import QApplication, QPlainTextEdit, QSplitter, QPushButton
 
 from views.chat_panel import ChatPanel
 
@@ -65,3 +65,17 @@ def test_request_ai_completion_ignores_empty(qt_app: QApplication) -> None:
 
     assert result is None
     assert captured == []
+
+
+def test_request_file_attachment_emits_signal(qt_app: QApplication) -> None:
+    """ファイル添付ボタンのクリックでシグナルが発行されることを検証する。"""
+    panel = ChatPanel()
+    triggered: List[bool] = []
+    panel.attachment_requested.connect(lambda: triggered.append(True))
+
+    button = panel.findChild(QPushButton, "chatAttachButton")
+    assert button is not None
+
+    button.click()
+
+    assert triggered

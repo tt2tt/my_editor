@@ -10,7 +10,7 @@ import pytest
 pytest.importorskip("PySide6")
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QTreeWidgetItem, QWidget
+from PySide6.QtWidgets import QApplication, QPlainTextEdit, QTreeWidgetItem, QWidget
 
 from controllers.app_controller import AppController
 from controllers.ai_controller import AIController
@@ -19,7 +19,7 @@ from controllers.file_controller import FileController
 from controllers.settings_controller import SettingsController
 from settings.model import SettingsModel
 from views.main_window import MainWindow
-from exceptions import AIIntegrationError
+from exceptions import AIIntegrationError, FileOperationError
 
 
 class _StubSettingsModel:
@@ -383,3 +383,89 @@ def test_settings_cancel_does_not_reset_ai_client(
     qt_app.processEvents()
 
     assert ai_stub.reset_called is False
+
+
+def test_chat_attachment_delegates_to_ai_controller(
+    qt_app: QApplication,
+    main_window: MainWindow,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """チャット添付がAIコントローラへファイル内容を渡すことを検証する。"""
+    ai_stub = _StubAIController()
+    controller = _build_controller(
+        qt_app,
+        main_window,
+        ai_controller=cast(AIController, ai_stub),
+    )
+
+    target = (tmp_path / "snippet.py").resolve()
+    target.write_text("print('ok')\n", encoding="utf-8")
+
+    monkeypatch.setattr(controller, "_prompt_file_to_open", lambda: target)
+
+    main_window.chat_attachment_requested.emit()
+    qt_app.processEvents()
+
+    assert ai_stub.received
+    prompt = ai_stub.received[0]
+    assert "print('ok')" in prompt
+    assert str(target) in prompt
+
+    history = main_window.chat_panel.findChild(QPlainTextEdit, "chatHistory")
+    assert history is not None
+    assert "ファイルを送信" in history.toPlainText()
+    assert main_window.statusBar().currentMessage() == "AI応答: stub-response"
+
+
+def test_chat_attachment_cancelled_does_not_call_ai(
+    qt_app: QApplication,
+    main_window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """チャット添付のキャンセル時にAI呼び出しが行われないことを検証する。"""
+    ai_stub = _StubAIController()
+    controller = _build_controller(
+        qt_app,
+        main_window,
+        ai_controller=cast(AIController, ai_stub),
+    )
+
+    monkeypatch.setattr(controller, "_prompt_file_to_open", lambda: None)
+
+    main_window.chat_attachment_requested.emit()
+    qt_app.processEvents()
+
+    assert ai_stub.received == []
+    assert main_window.statusBar().currentMessage() == "チャット: ファイル選択をキャンセルしました。"
+
+
+def test_chat_attachment_read_error_displays_status(
+    qt_app: QApplication,
+    main_window: MainWindow,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ファイル読み込み失敗時にエラーメッセージが表示されることを検証する。"""
+    ai_stub = _StubAIController()
+    controller = _build_controller(
+        qt_app,
+        main_window,
+        ai_controller=cast(AIController, ai_stub),
+    )
+
+    target = (tmp_path / "broken.txt").resolve()
+    target.write_text("dummy", encoding="utf-8")
+
+    monkeypatch.setattr(controller, "_prompt_file_to_open", lambda: target)
+
+    def _raise_error(_: Path) -> str:
+        raise FileOperationError("読み込みエラー")
+
+    monkeypatch.setattr(controller, "_read_text_for_chat", _raise_error)
+
+    main_window.chat_attachment_requested.emit()
+    qt_app.processEvents()
+
+    assert ai_stub.received == []
+    assert main_window.statusBar().currentMessage() == "チャットエラー: 読み込みエラー"

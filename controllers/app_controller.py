@@ -154,6 +154,10 @@ class AppController:
         if chat_signal is not None:
             chat_signal.connect(self._handle_chat_submitted)
 
+        attach_signal = getattr(self._window, "chat_attachment_requested", None)
+        if attach_signal is not None:
+            attach_signal.connect(self._handle_chat_attachment_request)
+
     def _wire_events(self) -> None:
         """ビューシグナルとイベントバスの結線、およびハンドラ購読を設定する。"""
         if self._window is None:
@@ -338,6 +342,83 @@ class AppController:
 
         if self._window is not None:
             self._window.show_chat_response(response)
+
+    def _handle_chat_attachment_request(self) -> None:
+        """チャットへのファイル添付リクエストを処理する。"""
+        if self._ai_controller is None:
+            self._logger.warning("AIコントローラが未設定のため添付を処理できません。")
+            if self._window is not None:
+                self._window.show_chat_error("AI機能が利用できません。")
+            return
+
+        selected = self._prompt_file_to_open()
+        if selected is None:
+            self._logger.debug("チャット添付用のファイル選択がキャンセルされました。")
+            if self._window is not None:
+                self._window.statusBar().showMessage("チャット: ファイル選択をキャンセルしました。", 3000)
+            return
+
+        normalized = selected.expanduser().resolve(strict=False)
+
+        try:
+            content = self._read_text_for_chat(normalized)
+        except FileOperationError as exc:
+            self._logger.error("チャット添付ファイルの読み込みに失敗しました: %s", normalized, exc_info=exc)
+            if self._window is not None:
+                self._window.show_chat_error(str(exc))
+            return
+
+        prompt = self._build_chat_file_prompt(normalized, content)
+
+        if self._window is not None:
+            self._window.chat_panel.append_user_message(f"ファイルを送信: {normalized.name}")
+
+        try:
+            response = self._ai_controller.handle_chat_submit(prompt)
+        except AIIntegrationError as exc:
+            self._logger.error("チャット添付の解析に失敗しました。", exc_info=exc)
+            if self._window is not None:
+                self._window.show_chat_error(str(exc))
+            return
+        except Exception:  # noqa: BLE001
+            self._logger.exception("チャット添付処理中に予期せぬ例外が発生しました。")
+            if self._window is not None:
+                self._window.show_chat_error("AI応答の取得中にエラーが発生しました。")
+            return
+
+        if self._window is not None:
+            self._window.show_chat_response(response)
+
+    def _read_text_for_chat(self, path: Path) -> str:
+        """チャット添付用にテキストファイルを読み込む。"""
+        candidates = ["utf-8", "utf-8-sig", "utf-16", "utf-16-le", "utf-16-be", "cp932"]
+
+        for encoding in candidates:
+            try:
+                return path.read_text(encoding=encoding)
+            except UnicodeDecodeError as exc:
+                self._logger.debug(
+                    "チャット添付ファイルのデコードに失敗しました: path=%s encoding=%s",
+                    path,
+                    encoding,
+                    exc_info=exc,
+                )
+                continue
+            except OSError as exc:
+                self._logger.error("チャット添付ファイルの読み込みに失敗しました: %s", path, exc_info=exc)
+                raise FileOperationError(f"ファイルの読み込みに失敗しました: {path}") from exc
+
+        self._logger.error("チャット添付ファイルの読み込みで利用可能なエンコーディングが見つかりません: %s", path)
+        raise FileOperationError(f"ファイルの読み込みに失敗しました: {path}")
+
+    @staticmethod
+    def _build_chat_file_prompt(path: Path, content: str) -> str:
+        """ファイル内容をAIへのプロンプト形式へ整形する。"""
+        display_path = str(path)
+        header = f"以下はファイル {display_path} の内容です。解析と回答をお願いします。"
+        divider = f"----- ファイル開始 ({path.name}) -----"
+        footer = f"----- ファイル終了 ({path.name}) -----"
+        return f"{header}\n{divider}\n{content}\n{footer}"
 
     def _prompt_file_to_open(self) -> Optional[Path]:
         """ファイルを開く際の選択ダイアログを表示する。"""
