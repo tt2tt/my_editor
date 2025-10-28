@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction, QKeySequence
-from PySide6.QtWidgets import QHBoxLayout, QLineEdit, QMainWindow, QPushButton, QSplitter, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QMainWindow, QSplitter, QVBoxLayout, QWidget
 
 from views.editor_tab_widget import EditorTabWidget
 from views.folder_tree import FolderTree
+from views.chat_panel import ChatPanel
 
 
 class MainWindow(QMainWindow):
@@ -49,42 +50,29 @@ class MainWindow(QMainWindow):
         self._folder_tree.setObjectName("folderTree")
         self._main_splitter.addWidget(self._folder_tree)
 
-        # 右側: エディタ領域とチャットUIをまとめる縦レイアウト。
-        editor_panel = QWidget(self._main_splitter)
-        editor_layout = QVBoxLayout(editor_panel)
-        editor_layout.setContentsMargins(0, 0, 0, 0)
-        editor_layout.setSpacing(8)
+        # 右側: エディタタブとチャットパネルを並列配置する。
+        self._editor_splitter = QSplitter(Qt.Orientation.Horizontal, self._main_splitter)
+        self._editor_splitter.setObjectName("editorSplitter")
+        self._main_splitter.addWidget(self._editor_splitter)
 
-        # エディタタブウィジェットを配置する。
-        self._tab_widget = EditorTabWidget(editor_panel)
+        self._tab_widget = EditorTabWidget(self._editor_splitter)
         self._tab_widget.setObjectName("editorTabs")
-        editor_layout.addWidget(self._tab_widget)
+        self._editor_splitter.addWidget(self._tab_widget)
 
-        # チャット入力と送信ボタンを横並びで配置する。
-        chat_container = QWidget(editor_panel)
-        chat_layout = QHBoxLayout(chat_container)
-        chat_layout.setContentsMargins(0, 0, 0, 0)
-        chat_layout.setSpacing(4)
+        self._chat_panel = ChatPanel(self._editor_splitter)
+        self._chat_panel.setObjectName("chatPanel")
+        self._editor_splitter.addWidget(self._chat_panel)
 
-        self._chat_input = QLineEdit(chat_container)
-        self._chat_input.setObjectName("chatInput")
-        chat_layout.addWidget(self._chat_input)
-
-        self._send_button = QPushButton("送信", chat_container)
-        self._send_button.setObjectName("sendButton")
-        chat_layout.addWidget(self._send_button)
-
-        editor_layout.addWidget(chat_container)
-        self._main_splitter.addWidget(editor_panel)
         self._main_splitter.setStretchFactor(0, 1)
         self._main_splitter.setStretchFactor(1, 3)
+        self._editor_splitter.setStretchFactor(0, 3)
+        self._editor_splitter.setStretchFactor(1, 2)
 
         self.setCentralWidget(self._central_container)
 
     def _connect_signals(self) -> None:
         """ウィジェット間のシグナルを接続する。"""
-        self._send_button.clicked.connect(self._handle_chat_submit)
-        self._chat_input.returnPressed.connect(self._handle_chat_submit)
+        self._chat_panel.completion_requested.connect(self._handle_chat_submit)
 
     def _bind_actions(self) -> None:
         """メニューバーのアクションを初期化する。"""
@@ -115,22 +103,25 @@ class MainWindow(QMainWindow):
         self._action_open_settings.setShortcut(QKeySequence.StandardKey.Preferences)
         file_menu.addAction(self._action_open_settings)
 
-    def _handle_chat_submit(self) -> None:
+    def _handle_chat_submit(self, message: str) -> None:
         """チャット入力の送信要求を処理する。"""
-        text = self._chat_input.text().strip()
+        text = message.strip()
         if not text:
+            self.statusBar().showMessage("チャットエラー: メッセージを入力してください。", 3000)
             return
 
+        self._chat_panel.append_user_message(text)
         self.statusBar().showMessage(f"チャット送信: {text}", 2000)
         self.chat_submitted.emit(text)
-        self._chat_input.clear()
 
     def show_chat_response(self, response: str) -> None:
         """AIからの応答メッセージを表示する。"""
+        self._chat_panel.append_ai_message(response)
         self.statusBar().showMessage(f"AI応答: {response}", 5000)
 
     def show_chat_error(self, message: str) -> None:
         """チャット処理で発生したエラーを表示する。"""
+        self._chat_panel.append_ai_message(f"エラー: {message}")
         self.statusBar().showMessage(f"チャットエラー: {message}", 5000)
 
     @property
@@ -149,14 +140,9 @@ class MainWindow(QMainWindow):
         return self._tab_widget
 
     @property
-    def chat_input(self) -> QLineEdit:
-        """チャット入力フィールドを返す。"""
-        return self._chat_input
-
-    @property
-    def send_button(self) -> QPushButton:
-        """チャット送信ボタンを返す。"""
-        return self._send_button
+    def chat_panel(self) -> ChatPanel:
+        """チャットパネルを返す。"""
+        return self._chat_panel
 
     @property
     def action_open_file(self) -> QAction:
