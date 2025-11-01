@@ -128,7 +128,7 @@
 	- テスト: `tests/scripts/test_build_exe.py::test_build_windows_exe_invokes_pyinstaller_default_paths`
 
 フェーズ9: QAと仕上げ
-32. UATシナリオ定義 (`tests/manual/uat_checklist.md`)
+32. [済] UATシナリオ定義 (`tests/manual/uat_checklist.md`)
 	- テスト: 手動
 33. 進捗更新 (`document/progress.txt`)
 	- 各タスク完了時に〇でチェック
