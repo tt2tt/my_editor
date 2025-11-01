@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 from typing import Callable, Iterable, Optional
 
@@ -390,7 +391,8 @@ class AppController:
             return
 
         target_path, _original_content = attachments[0]
-        prompt = self._compose_chat_prompt(trimmed, attachments)
+        augmented_instruction = f"{trimmed}\nソースコードはコードブロックで出力してください。"
+        prompt = self._compose_chat_prompt(augmented_instruction, attachments)
 
         try:
             new_content = self._ai_controller.handle_chat_submit(prompt)
@@ -406,6 +408,13 @@ class AppController:
                 self._window.chat_panel.set_input_text(trimmed)
                 self._window.show_chat_error("AI応答の取得中にエラーが発生しました。")
             return
+
+        extracted_content = self._extract_code_block(new_content)
+        if extracted_content is not None:
+            self._logger.info("AI応答からコードブロックを抽出しました。")
+            new_content = extracted_content
+        else:
+            self._logger.info("AI応答にコードブロックが見つからなかったため全文を適用します。")
 
         try:
             self._file_controller.apply_external_edit(target_path, new_content)
@@ -496,6 +505,14 @@ class AppController:
             segments.append(f"以下はファイル {display_path} の内容です。\n{divider}\n{content}\n{footer}")
 
         return "\n\n".join(segments)
+
+    def _extract_code_block(self, text: str) -> Optional[str]:
+        """AI応答から最初のコードブロックを抽出する。"""
+        pattern = re.compile(r"```(?:[\w.+-]+)?\n(.*?)```", re.DOTALL)
+        match = pattern.search(text)
+        if match is None:
+            return None
+        return match.group(1).strip()
 
     def _prompt_file_to_open(self) -> Optional[Path]:
         """ファイルを開く際の選択ダイアログを表示する。"""
