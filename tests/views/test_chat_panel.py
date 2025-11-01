@@ -1,0 +1,96 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Generator, List, cast
+
+import pytest
+
+pytest.importorskip("PySide6")
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QLabel, QPlainTextEdit, QSplitter, QPushButton
+
+from views.chat_panel import ChatPanel
+
+
+@pytest.fixture(name="qt_app")
+def fixture_qt_app() -> Generator[QApplication, None, None]:
+    """テスト全体で共有するQApplicationインスタンスを保持する。"""
+    app_instance = QApplication.instance()
+    if app_instance is None:
+        app_instance = QApplication([])
+    app = cast(QApplication, app_instance)
+    yield app
+
+
+def test_append_messages(qt_app: QApplication) -> None:
+    """append系メソッドで履歴が正しく更新されることを検証する。"""
+    panel = ChatPanel()
+
+    splitter = panel.findChild(QSplitter, "chatSplitter")
+    assert splitter is not None
+    assert splitter.orientation() == Qt.Orientation.Vertical
+
+    panel.append_user_message("こんにちは")
+    panel.append_ai_message("了解しました")
+
+    history = panel.findChild(QPlainTextEdit, "chatHistory")
+    assert history is not None
+    assert history.toPlainText().splitlines() == ["ユーザー: こんにちは", "AI: 了解しました"]
+
+
+def test_request_ai_completion_emits_signal(qt_app: QApplication) -> None:
+    """request_ai_completionがシグナルを発行し入力欄をクリアすることを検証する。"""
+    panel = ChatPanel()
+    captured: List[str] = []
+    panel.completion_requested.connect(captured.append)
+
+    input_field = panel.findChild(QPlainTextEdit, "chatInput")
+    assert input_field is not None
+    input_field.setPlainText("テスト入力")
+
+    result = panel.request_ai_completion()
+
+    assert result == "テスト入力"
+    assert captured == ["テスト入力"]
+    assert input_field.toPlainText() == ""
+
+
+def test_request_ai_completion_ignores_empty(qt_app: QApplication) -> None:
+    """空文字の場合はシグナルを発行しないことを検証する。"""
+    panel = ChatPanel()
+    captured: List[str] = []
+    panel.completion_requested.connect(captured.append)
+
+    result = panel.request_ai_completion()
+
+    assert result is None
+    assert captured == []
+
+
+def test_request_file_attachment_emits_signal(qt_app: QApplication) -> None:
+    """ファイル添付ボタンのクリックでシグナルが発行されることを検証する。"""
+    panel = ChatPanel()
+    triggered: List[bool] = []
+    panel.attachment_requested.connect(lambda: triggered.append(True))
+
+    button = panel.findChild(QPushButton, "chatAttachButton")
+    assert button is not None
+
+    button.click()
+
+    assert triggered
+
+
+def test_set_attachments_updates_label(qt_app: QApplication, tmp_path: Path) -> None:
+    """添付ファイル一覧がラベルに表示されることを検証する。"""
+    panel = ChatPanel()
+    label = panel.findChild(QLabel, "chatAttachmentLabel")
+    assert label is not None
+    assert label.text() == "添付ファイル: なし"
+
+    attachments = [tmp_path / "a.txt", tmp_path / "b.py"]
+    panel.set_attachments(attachments)
+
+    assert label.text() == "添付ファイル: a.txt, b.py"
+    assert panel.attachment_summary() == "添付ファイル: a.txt, b.py"

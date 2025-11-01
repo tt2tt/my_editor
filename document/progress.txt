@@ -6,7 +6,35 @@
 フェーズ1
 5. MVC初期骨格 (`main.py`, `controllers/app_controller.py`, `views/main_window.py`) 〇 2025-10-21 完了
 6. イベントディスパッチ基盤 (`controllers/event_bus.py`) 〇 2025-10-25 完了
+フェーズ2
+7. ファイルモデル (`models/file_model.py`) 〇 2025-10-26 完了
+8. フォルダモデル (`models/folder_model.py`) 〇 2025-10-26 完了
+9. タブ状態モデル (`models/tab_model.py`) 〇 2025-10-26 完了
+フェーズ3
+10. メインウィンドウ枠組み (`views/main_window.py`) 〇 2025-10-26 完了
+11. タブビュー (`views/editor_tab_widget.py`) 〇 2025-10-26 完了
+12. フォルダツリービュー (`views/folder_tree.py`) 〇 2025-10-26 完了
+13. チャットパネルビュー (`views/chat_panel.py`) 〇 2025-10-26 完了
+フェーズ4
+14. ファイルコントローラ (`controllers/file_controller.py`) 〇 2025-10-26 完了
+15. フォルダコントローラ (`controllers/folder_controller.py`) 〇 2025-10-26 完了
+16. タブコントローラ (`controllers/tab_controller.py`) 〇 2025-10-26 完了
+17. AIコントローラ (`controllers/ai_controller.py`) 〇 2025-10-26 完了
+フェーズ5
+18. シグナル接続 (`controllers/app_controller.py`) 〇 2025-10-26 完了
+19. 未保存フラグ更新 (`controllers/file_controller.py`) 〇 2025-10-26 完了
+20. 行番号とズーム (`views/editor_widget.py`) 〇 2025-10-26 完了
+21. フォルダツリーファイル操作 (`views/folder_tree.py`, `controllers/folder_controller.py`) 〇 2025-10-26 完了
+22. UI操作からのコントローラ呼び出し (`controllers/app_controller.py`, `views/main_window.py`) 〇 2025-10-26 完了
+フェーズ6
+23. OpenAI設定画面 (`views/settings_dialog.py`) 〇 2025-10-27 完了
+24. APIキー永続化 (`controllers/settings_controller.py`, `tests/controllers/test_settings_controller.py`) 〇 2025-10-27 完了
+25. チャット連携 (`controllers/ai_controller.py`, `tests/controllers/test_ai_controller.py`) 〇 2025-10-27 完了
 フェーズ8
 28. 型チェック (`mypy.ini`) と `mypy` 対応 〇 2025-10-25 完了
 29. GitHub Actions CI構築 (`.github/workflows/ci.yml`) 〇 2025-10-25 完了
 30. PyInstallerビルドスクリプト (`scripts/build_exe.py`) 〇 2025-10-25 完了
+31. グローバル例外ハンドラ (`main.py`) 〇 2025-11-01 完了
+32. UATシナリオ定義 (`tests/manual/uat_checklist.md`) 〇 2025-11-01 完了
+フェーズ9
+33. ドキュメント整理 (`README.md`, `USAGE.md`) 〇 2025-11-02 完了

@@ -1,0 +1,125 @@
+@startuml UAT_Scenario_A
+' UATシナリオA: エディタ基本操作のフロー
+skinparam style strictuml
+skinparam backgroundColor #f5f5f5
+skinparam ArrowColor #333333
+skinparam ArrowThickness 1
+skinparam defaultTextAlignment center
+
+title シナリオA: エディタ基本操作
+|ユーザー|
+start
+:アプリを起動;
+|アプリ|
+:MainWindow を表示;
+|ユーザー|
+:「新規ファイル」を選択;
+|アプリ|
+:FileController.create_new_file();
+:EditorTabWidget に空タブを追加;
+|ユーザー|
+:テキストを入力;
+|アプリ|
+:TabController.mark_current_dirty(true);
+|ユーザー|
+:Ctrl+S で保存を指示;
+|アプリ|
+:保存ダイアログを表示;
+|ユーザー|
+:保存先を決定;
+|アプリ|
+:FileController.save_file_as(path);
+:TabState.mark_dirty(false);
+|ユーザー|
+:タブを閉じる;
+|アプリ|
+:FileController.close_current_tab();
+stop
+@enduml
+
+@startuml UAT_Scenario_B
+' UATシナリオB: 既存ファイル編集のフロー
+skinparam style strictuml
+skinparam backgroundColor #f5f5f5
+skinparam ArrowColor #333333
+skinparam ArrowThickness 1
+skinparam defaultTextAlignment center
+
+title シナリオB: 既存ファイル編集
+|ユーザー|
+start
+:フォルダツリーでファイルを選択;
+|アプリ|
+:FolderController.load_initial_tree()*;
+:FileController.open_file(path);
+|ユーザー|
+:内容を編集;
+|アプリ|
+:TabController.mark_current_dirty(true);
+|ユーザー|
+:保存を指示;
+|アプリ|
+:FileController.save_current_file();
+:TabState.mark_dirty(false);
+|ユーザー|
+:再度ファイルを開いて確認;
+|アプリ|
+:FileController.open_file(path);
+:EditorTabWidget に複数タブを維持;
+stop
+@enduml
+
+@startuml UAT_Scenario_C
+' UATシナリオC: AIチャットによる編集フロー
+skinparam style strictuml
+skinparam backgroundColor #f5f5f5
+skinparam ArrowColor #333333
+skinparam ArrowThickness 1
+skinparam defaultTextAlignment center
+
+title シナリオC: AIチャット
+|ユーザー|
+start
+:チャットパネルにメッセージを入力;
+|アプリ|
+:ChatPanel.completion_requested を発火;
+:AppController._handle_chat_submitted();
+:AIController.handle_chat_submit();
+|ユーザー|
+:応答を確認;
+|アプリ|
+:ChatPanel.append_ai_message();
+|ユーザー|
+:ファイルを添付し「AIで編集」を選択;
+|アプリ|
+:AppController._handle_chat_edit_requested();
+:AIController.handle_chat_submit() で提案取得;
+:FileController.apply_external_edit(path, content);
+:EditorTabWidget を更新;
+stop
+@enduml
+
+@startuml UAT_Scenario_D
+' UATシナリオD: 設定とログ確認フロー
+skinparam style strictuml
+skinparam backgroundColor #f5f5f5
+skinparam ArrowColor #333333
+skinparam ArrowThickness 1
+skinparam defaultTextAlignment center
+
+title シナリオD: 設定とログ
+|ユーザー|
+start
+:設定メニューを開く;
+|アプリ|
+:SettingsController.open_dialog();
+|ユーザー|
+:APIキーを編集して保存;
+|アプリ|
+:SettingsModel.set_api_key();
+:SettingsController.save_settings_from_dialog();
+:logging_config へ INFO ログ出力;
+|ユーザー|
+:logs/application.log を確認;
+stop
+@enduml
