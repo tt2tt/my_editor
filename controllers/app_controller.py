@@ -155,6 +155,10 @@ class AppController:
         if chat_signal is not None:
             chat_signal.connect(self._handle_chat_submitted)
 
+        edit_signal = getattr(self._window, "chat_edit_requested", None)
+        if edit_signal is not None:
+            edit_signal.connect(self._handle_chat_edit_requested)
+
         attach_signal = getattr(self._window, "chat_attachment_requested", None)
         if attach_signal is not None:
             attach_signal.connect(self._handle_chat_attachment_request)
@@ -348,6 +352,83 @@ class AppController:
             self._window.chat_panel.set_attachments([])
         if self._window is not None:
             self._window.show_chat_response(response)
+
+    def _handle_chat_edit_requested(self, instruction: str) -> None:
+        """AIを利用したファイル編集リクエストを処理する。"""
+        trimmed = instruction.strip()
+
+        if not trimmed:
+            if self._window is not None:
+                self._window.show_chat_error("メッセージを入力してください。")
+            return
+
+        if self._ai_controller is None:
+            self._logger.warning("AIコントローラが未設定のため編集を処理できません。")
+            if self._window is not None:
+                self._window.chat_panel.set_input_text(trimmed)
+                self._window.show_chat_error("AI機能が利用できません。")
+            return
+
+        if self._file_controller is None:
+            self._logger.warning("ファイルコントローラが未設定のため編集結果を適用できません。")
+            if self._window is not None:
+                self._window.chat_panel.set_input_text(trimmed)
+                self._window.show_chat_error("ファイル編集機能が利用できません。")
+            return
+
+        attachments = list(self._pending_chat_attachments)
+        if not attachments:
+            if self._window is not None:
+                self._window.chat_panel.set_input_text(trimmed)
+                self._window.show_chat_error("編集するファイルを添付してください。")
+            return
+
+        if len(attachments) != 1:
+            if self._window is not None:
+                self._window.chat_panel.set_input_text(trimmed)
+                self._window.show_chat_error("編集には1件のファイルのみ添付してください。")
+            return
+
+        target_path, _original_content = attachments[0]
+        prompt = self._compose_chat_prompt(trimmed, attachments)
+
+        try:
+            new_content = self._ai_controller.handle_chat_submit(prompt)
+        except AIIntegrationError as exc:
+            self._logger.error("AI編集の取得に失敗しました。", exc_info=exc)
+            if self._window is not None:
+                self._window.chat_panel.set_input_text(trimmed)
+                self._window.show_chat_error(str(exc))
+            return
+        except Exception:  # noqa: BLE001
+            self._logger.exception("AI編集処理中に予期せぬ例外が発生しました。")
+            if self._window is not None:
+                self._window.chat_panel.set_input_text(trimmed)
+                self._window.show_chat_error("AI応答の取得中にエラーが発生しました。")
+            return
+
+        try:
+            self._file_controller.apply_external_edit(target_path, new_content)
+        except FileOperationError as exc:
+            self._logger.error("AI編集結果の適用に失敗しました: %s", target_path, exc_info=exc)
+            if self._window is not None:
+                self._window.chat_panel.set_input_text(trimmed)
+                self._window.show_chat_error(str(exc))
+            return
+        except Exception:  # noqa: BLE001
+            self._logger.exception("AI編集結果の適用中に予期せぬ例外が発生しました。")
+            if self._window is not None:
+                self._window.chat_panel.set_input_text(trimmed)
+                self._window.show_chat_error("ファイルの更新中にエラーが発生しました。")
+            return
+
+        self._pending_chat_attachments.clear()
+        if self._window is not None:
+            self._window.chat_panel.set_attachments([])
+            self._window.chat_panel.append_ai_message(f"AI: {target_path.name} を編集しました。")
+            self._window.statusBar().showMessage(f"AI編集: {target_path.name} を更新しました。", 5000)
+
+        self._logger.info("AI編集をファイルへ適用しました: %s", target_path)
 
     def _handle_chat_attachment_request(self) -> None:
         """チャットへのファイル添付リクエストを処理する。"""

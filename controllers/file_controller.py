@@ -135,6 +135,36 @@ class FileController:
 
         return resolved
 
+    def apply_external_edit(self, path: Path, new_content: str) -> None:
+        """外部から提供された内容でファイルを上書きし、タブを更新する。"""
+        resolved = path.expanduser().resolve(strict=False)
+        self._logger.info("外部編集を適用します: %s", resolved)
+
+        self._file_model.save_file(resolved, new_content)
+
+        tab_id = self._tab_state.find_tab_id_by_path(resolved)
+        if tab_id is None:
+            self._logger.debug("対象ファイルのタブは開かれていません: %s", resolved)
+            return
+
+        editor = self._find_editor_by_tab_id(tab_id)
+        if editor is None:
+            self._logger.warning("編集対象タブに対応するエディタが見つかりません: id=%s", tab_id)
+            return
+
+        previous_state = editor.blockSignals(True)
+        editor.setPlainText(new_content)
+        editor.document().setModified(False)
+        editor.blockSignals(previous_state)
+
+        self._tab_state.mark_dirty(tab_id, False)
+
+        tab_index = self._tab_view.indexOf(editor)
+        if tab_index != -1:
+            self._tab_view.set_dirty(tab_index, False)
+
+        self._logger.info("外部編集をタブへ反映しました: %s", resolved)
+
     def close_current_tab(self) -> Optional[Path]:
         """現在アクティブなタブを閉じる。"""
         editor = self._extract_current_editor()
@@ -218,3 +248,10 @@ class FileController:
         name = f"untitled-{self._untitled_counter}.txt"
         self._untitled_counter += 1
         return Path(name)
+
+    def _find_editor_by_tab_id(self, tab_id: str) -> Optional[QPlainTextEdit]:
+        """タブIDに対応するエディタウィジェットを取得する。"""
+        for editor, current_id in self._tab_id_by_editor.items():
+            if current_id == tab_id:
+                return editor
+        return None

@@ -13,6 +13,7 @@ class MainWindow(QMainWindow):
     """アプリケーションのメインウィンドウ。"""
 
     chat_submitted = Signal(str)
+    chat_edit_requested = Signal(str)
     chat_attachment_requested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -74,6 +75,7 @@ class MainWindow(QMainWindow):
     def _connect_signals(self) -> None:
         """ウィジェット間のシグナルを接続する。"""
         self._chat_panel.completion_requested.connect(self._handle_chat_submit)
+        self._chat_panel.edit_requested.connect(self._handle_chat_edit_request)
         self._chat_panel.attachment_requested.connect(self._handle_chat_attachment_request)
 
     def _bind_actions(self) -> None:
@@ -136,6 +138,26 @@ class MainWindow(QMainWindow):
         """チャット添付リクエストを処理する。"""
         self.statusBar().showMessage("チャット: ファイル選択を開始します。", 2000)
         self.chat_attachment_requested.emit()
+
+    def _handle_chat_edit_request(self, message: str) -> None:
+        """チャット編集リクエストを処理する。"""
+        text = message.strip()
+        if not text:
+            self.statusBar().showMessage("チャットエラー: メッセージを入力してください。", 3000)
+            return
+
+        summary = self._chat_panel.attachment_summary()
+        if not summary:
+            self._chat_panel.set_input_text(text)
+            self.statusBar().showMessage("チャットエラー: 添付ファイルを選択してください。", 5000)
+            return
+
+        display_text = f"{text}\n{summary}"
+        self._chat_panel.append_user_message(display_text)
+
+        status = f"チャット編集送信: {text} ({summary})"
+        self.statusBar().showMessage(status, 2000)
+        self.chat_edit_requested.emit(text)
 
     @property
     def folder_view(self) -> FolderTree:
