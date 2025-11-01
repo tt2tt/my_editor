@@ -130,7 +130,7 @@
 フェーズ9: QAと仕上げ
 32. [済] UATシナリオ定義 (`tests/manual/uat_checklist.md`)
 	- テスト: 手動
-33. 進捗更新 (`document/progress.txt`)
-	- 各タスク完了時に〇でチェック
-34. ドキュメント整理 (`README.md`, `USAGE.md`)
-	- 関数: なし
+33. [済] ドキュメント整理 (`README.md`, `USAGE.md`)
+	- README に概要とセットアップ手順を集約
+	- USAGE に運用フローとトラブルシューティングを記載
+	- テスト: なし (ドキュメント)
