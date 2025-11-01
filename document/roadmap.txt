@@ -104,7 +104,7 @@
 	- テスト: `tests/controllers/test_ai_controller.py::test_handle_chat_submit_returns_response`
 
 フェーズ7: エラーハンドリングとログ整備
-26. グローバル例外ハンドラ (`main.py`)
+26. [済] グローバル例外ハンドラ (`main.py`)
 	- 関数: `install_exception_hook()`
 	- ログ出力とユーザ通知
 	- テスト: `tests/test_main.py::test_exception_hook_logs`
