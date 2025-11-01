@@ -1,4 +1,4 @@
-@startuml ArchitectureDiagram
+﻿@startuml ArchitectureDiagram
 ' MVC構造のクラス図。ControllerがModelとView間の仲介を行う。
 skinparam style strictuml
 skinparam packageStyle rectangle
@@ -11,24 +11,29 @@ package "Model" {
   class FileModel {
     +load_file(path: Path): str
     +save_file(path: Path, content: str): None
-    +list_open_files(): list
+    +list_open_files(): list[Path]
   }
 
   class FolderModel {
-    +list_directory(path: Path): list
+    +list_directory(path: Path): list[Path]
     +create_item(path: Path, is_dir: bool): None
     +delete_item(path: Path): None
+    +rename_item(old_path: Path, new_path: Path): None
   }
 
   class TabState {
     +add_tab(file_path: Path): str
     +mark_dirty(tab_id: str, dirty: bool): None
     +close_tab(tab_id: str): None
+    +is_dirty(tab_id: str): bool
+    +get_file_path(tab_id: str): Path
+    +update_path(tab_id: str, new_path: Path): None
+    +find_tab_id_by_path(path: Path): str | None
   }
 
   class SettingsModel {
-    +load_settings(): dict
-    +save_settings(data: dict): None
+    +load_settings(): dict[str, object]
+    +save_settings(data: dict[str, object]): None
     +get_api_key(): str | None
     +set_api_key(key: str): None
   }
@@ -36,15 +41,27 @@ package "Model" {
 
 package "View" {
   class MainWindow {
-    +show(): None
+    +chat_submitted: Signal
+    +chat_edit_requested: Signal
+    +chat_attachment_requested: Signal
+    +show_chat_response(response: str): None
+    +show_chat_error(message: str): None
+    +folder_view: FolderTree
+    +tab_widget: EditorTabWidget
+    +chat_panel: ChatPanel
     -_build_layout(): None
     -_connect_signals(): None
+    -_bind_actions(): None
   }
 
   class EditorTabWidget {
     +add_editor_tab(file_path: Path, content: str): int
+    +close_tab(tab_index: int): Path | None
+    +close_current_tab(): Path | None
+    +set_close_request_handler(handler: Callable[[int], None]): None
     +set_dirty(tab_index: int, dirty: bool): None
-    +get_current_editor(): EditorWidget
+    +update_tab_path(tab_index: int, new_path: Path): None
+    +get_current_editor(): EditorWidget | None
   }
 
   class EditorWidget {
@@ -54,38 +71,78 @@ package "View" {
   }
 
   class FolderTree {
-    +populate(nodes: list): None
+    +populate(nodes: Iterable[FolderNode]): None
     +select_path(path: Path): None
+    +add_node(parent_path: Path, node: FolderNode): None
+    +remove_path(path: Path): None
+    +set_context_action_handler(handler: Callable[[str, Path], Path | None]): None
+    +rename_path(old_path: Path, new_path: Path): None
+    +current_path(): Path | None
   }
 
   class ChatPanel {
+    +completion_requested: Signal
+    +attachment_requested: Signal
+    +edit_requested: Signal
     +append_user_message(text: str): None
     +append_ai_message(text: str): None
-    +request_ai_completion(): None
+    +request_ai_completion(): str | None
+    +request_file_attachment(): None
+    +request_ai_edit(): str | None
+    +set_attachments(paths: Iterable[Path]): None
+    +attachment_summary(): str
+    +set_input_text(text: str): None
+  }
+
+  class SettingsDialog {
+    +api_key_input: QLineEdit
+    +save_button: QPushButton
+    +cancel_button: QPushButton
+    -_build_layout(): None
+    -_bind_actions(): None
+    -_load_initial_values(): None
   }
 }
 
 package "Controller" {
   class AppController {
     +start(): None
+    +window: MainWindow
+    +event_bus: EventBus
+    -_initialize_window(): None
+    -_initialize_controllers(): None
     -_wire_events(): None
+    -_handle_chat_submitted(message: str): None
+    -_handle_chat_edit_requested(instruction: str): None
+    -_handle_chat_attachment_request(): None
+    -_handle_open_file_action(): None
+    -_handle_new_file_action(): None
+    -_handle_open_folder_action(): None
+    -_handle_save_request(payload: Payload): None
+    -_emit_tab_changed(index: int): None
+    -_emit_folder_selected(): None
   }
 
   class EventBus {
-    +subscribe(event: str, handler)
-    +publish(event: str, payload)
+    +subscribe(event: str, handler: Handler): None
+    +publish(event: str, payload: Payload): None
   }
 
   class FileController {
     +open_file(path: Path): int
+    +create_new_file(): Path
     +save_current_file(): Path | None
     +save_file_as(path: Path): Path | None
+    +apply_external_edit(path: Path, new_content: str): None
+    +close_current_tab(): Path | None
+    +on_editor_text_changed(editor: QPlainTextEdit | None): None
   }
 
   class FolderController {
     +load_initial_tree(path: Path): None
     +handle_create(path: Path, is_dir: bool): None
     +handle_delete(path: Path): None
+    +handle_rename(path: Path): Path | None
   }
 
   class TabController {
@@ -96,38 +153,52 @@ package "Controller" {
 
   class AIController {
     +generate_code(prompt: str): str
-    +stream_chat(prompt: str): Iterable
+    +stream_chat(prompt: str): Iterable[str]
+    +handle_chat_submit(message: str): str
+    +reset_client(): None
+  }
+
+  class SettingsController {
+    +open_dialog(parent: QWidget | None): bool
+    +load_settings_into_dialog(dialog: SettingsDialog): None
+    +save_settings_from_dialog(dialog: SettingsDialog): None
+    +model: SettingsModel
   }
 }
 
 AppController --> MainWindow : controls
 AppController --> FileController : coordinates
+AppController --> FolderController : coordinates
+AppController --> TabController : coordinates
+AppController --> SettingsController : coordinates
 AppController --> AIController : coordinates
-AppController --> SettingsModel : uses
 AppController --> EventBus : dispatches
+AppController --> TabState : manages
 
 FileController --> FileModel : uses
+FileController --> TabState : updates
 FileController --> EditorTabWidget : updates
-FileController --> FolderModel : queries
+
 FolderController --> FolderModel : uses
 FolderController --> FolderTree : updates
+
 TabController --> TabState : updates
 TabController --> EditorTabWidget : updates
-EditorTabWidget o-- EditorWidget : owns
 
-AIController --> ChatPanel : updates
-AIController --> SettingsModel : reads/writes
-AIController --> FileModel : optional_context
+SettingsController --> SettingsModel : persists
+SettingsController --> SettingsDialog : presents
 
-MainWindow -[dashed]-> EventBus : emits_signals
-EventBus --> FileController : propagates
+AIController --> SettingsModel : reads_key
 
 MainWindow o-- EditorTabWidget : owns
 MainWindow o-- FolderTree : owns
 MainWindow o-- ChatPanel : owns
+EditorTabWidget o-- EditorWidget : owns
 
-FolderTree --> AppController : notifies
-EditorTabWidget --> FileController : emits_dirty
-ChatPanel --> AIController : submits_prompt
+ChatPanel ..> MainWindow : emits_signals
+MainWindow ..> AppController : forwards_events
+FolderTree ..> AppController : selection_changed
+EditorTabWidget ..> FileController : close_requests
+EventBus --> FileController : publishes
 
 @enduml

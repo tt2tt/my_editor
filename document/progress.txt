@@ -34,3 +34,7 @@
 28. 型チェック (`mypy.ini`) と `mypy` 対応 〇 2025-10-25 完了
 29. GitHub Actions CI構築 (`.github/workflows/ci.yml`) 〇 2025-10-25 完了
 30. PyInstallerビルドスクリプト (`scripts/build_exe.py`) 〇 2025-10-25 完了
+31. グローバル例外ハンドラ (`main.py`) 〇 2025-11-01 完了
+32. UATシナリオ定義 (`tests/manual/uat_checklist.md`) 〇 2025-11-01 完了
+フェーズ9
+33. ドキュメント整理 (`README.md`, `USAGE.md`) 〇 2025-11-02 完了
