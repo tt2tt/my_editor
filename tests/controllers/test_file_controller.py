@@ -44,6 +44,27 @@ def test_open_file_updates_tab(qt_app: QApplication, tmp_path: Path) -> None:
     assert file_path.resolve() in model.list_open_files()
 
 
+def test_create_new_file_adds_blank_tab(qt_app: QApplication) -> None:
+    """create_new_fileが空のタブを作成しダーティ状態にすることを検証する。"""
+    model = FileModel()
+    state = TabState()
+    tab_widget = EditorTabWidget()
+    controller = FileController(model, state, tab_widget)
+
+    first_path = controller.create_new_file()
+    second_path = controller.create_new_file()
+
+    assert tab_widget.count() == 2
+    assert first_path != second_path
+
+    editor = tab_widget.get_current_editor()
+    assert isinstance(editor, QPlainTextEdit)
+    tab_id = controller._tab_id_by_editor[editor]
+    assert state.is_dirty(tab_id) is True
+    assert tab_widget.tabText(tab_widget.currentIndex()).endswith("*")
+    assert editor.toPlainText() == ""
+
+
 def test_save_current_file_writes_changes(qt_app: QApplication, tmp_path: Path) -> None:
     """save_current_fileがエディタの内容を保存することを検証する。"""
     file_path = tmp_path / "document.txt"

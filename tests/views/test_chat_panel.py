@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Generator, List, cast
 
 import pytest
 
 pytest.importorskip("PySide6")
 
-from PySide6.QtWidgets import QApplication, QPlainTextEdit
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QLabel, QPlainTextEdit, QSplitter, QPushButton
 
 from views.chat_panel import ChatPanel
 
@@ -24,6 +26,10 @@ def fixture_qt_app() -> Generator[QApplication, None, None]:
 def test_append_messages(qt_app: QApplication) -> None:
     """append系メソッドで履歴が正しく更新されることを検証する。"""
     panel = ChatPanel()
+
+    splitter = panel.findChild(QSplitter, "chatSplitter")
+    assert splitter is not None
+    assert splitter.orientation() == Qt.Orientation.Vertical
 
     panel.append_user_message("こんにちは")
     panel.append_ai_message("了解しました")
@@ -60,3 +66,31 @@ def test_request_ai_completion_ignores_empty(qt_app: QApplication) -> None:
 
     assert result is None
     assert captured == []
+
+
+def test_request_file_attachment_emits_signal(qt_app: QApplication) -> None:
+    """ファイル添付ボタンのクリックでシグナルが発行されることを検証する。"""
+    panel = ChatPanel()
+    triggered: List[bool] = []
+    panel.attachment_requested.connect(lambda: triggered.append(True))
+
+    button = panel.findChild(QPushButton, "chatAttachButton")
+    assert button is not None
+
+    button.click()
+
+    assert triggered
+
+
+def test_set_attachments_updates_label(qt_app: QApplication, tmp_path: Path) -> None:
+    """添付ファイル一覧がラベルに表示されることを検証する。"""
+    panel = ChatPanel()
+    label = panel.findChild(QLabel, "chatAttachmentLabel")
+    assert label is not None
+    assert label.text() == "添付ファイル: なし"
+
+    attachments = [tmp_path / "a.txt", tmp_path / "b.py"]
+    panel.set_attachments(attachments)
+
+    assert label.text() == "添付ファイル: a.txt, b.py"
+    assert panel.attachment_summary() == "添付ファイル: a.txt, b.py"

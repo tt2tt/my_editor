@@ -116,3 +116,36 @@ class FolderModel:
             raise FileOperationError(f"項目の削除に失敗しました: {resolved_path}") from exc
 
         self._logger.info("項目を削除しました: %s", resolved_path)
+
+    def rename_item(self, old_path: Path, new_path: Path) -> None:
+        """ファイルまたはフォルダの名称を変更する。
+
+        Args:
+            old_path (Path): 現在のパス。
+            new_path (Path): 変更後のパス。
+
+        Raises:
+            FileOperationError: リネーム対象が存在しない、または重複・失敗した場合。
+        """
+        src = old_path.expanduser().resolve(strict=False)
+        dst = new_path.expanduser().resolve(strict=False)
+
+        if not src.exists():
+            self._logger.error("名称変更対象が存在しません: %s", src)
+            raise FileOperationError(f"名称変更対象が存在しません: {src}")
+
+        if dst.exists():
+            self._logger.error("名称変更後のパスが既に存在します: %s", dst)
+            raise FileOperationError(f"名称変更後のパスが既に存在します: {dst}")
+
+        if src.parent != dst.parent:
+            self._logger.error("親ディレクトリを跨ぐ名称変更はサポートされていません: %s -> %s", src, dst)
+            raise FileOperationError("異なる親ディレクトリへの名称変更はサポートされていません。")
+
+        try:
+            src.rename(dst)
+        except OSError as exc:
+            self._logger.error("名称変更に失敗しました: %s -> %s", src, dst, exc_info=exc)
+            raise FileOperationError(f"名称変更に失敗しました: {src} -> {dst}") from exc
+
+        self._logger.info("項目の名称を変更しました: %s -> %s", src, dst)

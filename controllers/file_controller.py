@@ -37,6 +37,7 @@ class FileController:
 
         # エディタウィジェットとタブIDの対応関係を追跡する。
         self._tab_id_by_editor: dict[QPlainTextEdit, str] = {}
+        self._untitled_counter = 1
         self._tab_view.set_close_request_handler(self._handle_tab_close_requested)
 
     def open_file(self, path: Path) -> int:
@@ -63,6 +64,25 @@ class FileController:
         editor_widget.textChanged.connect(lambda editor=editor_widget: self.on_editor_text_changed(editor))
         self._tab_view.setCurrentIndex(tab_index)
         return tab_index
+
+    def create_new_file(self) -> Path:
+        """空のエディタタブを生成して編集を開始する。"""
+        placeholder_path = self._generate_untitled_path()
+        tab_id = self._tab_state.add_tab(placeholder_path)
+        tab_index = self._tab_view.add_editor_tab(placeholder_path, "")
+
+        editor_widget = self._tab_view.widget(tab_index)
+        if not isinstance(editor_widget, QPlainTextEdit):
+            self._logger.error("新規タブのエディタウィジェット生成に失敗しました: index=%s", tab_index)
+            raise RuntimeError("新規タブのエディタウィジェット生成に失敗しました。")
+
+        self._tab_id_by_editor[editor_widget] = tab_id
+        editor_widget.textChanged.connect(lambda editor=editor_widget: self.on_editor_text_changed(editor))
+        self._tab_state.mark_dirty(tab_id, True)
+        self._tab_view.set_dirty(tab_index, True)
+        self._tab_view.setCurrentIndex(tab_index)
+        self._logger.info("空のエディタタブを生成しました: id=%s path=%s", tab_id, placeholder_path)
+        return placeholder_path
 
     def save_current_file(self) -> Optional[Path]:
         """アクティブなタブの内容を現在のパスへ保存する。
@@ -114,6 +134,36 @@ class FileController:
             self._tab_view.set_dirty(tab_index, False)
 
         return resolved
+
+    def apply_external_edit(self, path: Path, new_content: str) -> None:
+        """外部から提供された内容でファイルを上書きし、タブを更新する。"""
+        resolved = path.expanduser().resolve(strict=False)
+        self._logger.info("外部編集を適用します: %s", resolved)
+
+        self._file_model.save_file(resolved, new_content)
+
+        tab_id = self._tab_state.find_tab_id_by_path(resolved)
+        if tab_id is None:
+            self._logger.debug("対象ファイルのタブは開かれていません: %s", resolved)
+            return
+
+        editor = self._find_editor_by_tab_id(tab_id)
+        if editor is None:
+            self._logger.warning("編集対象タブに対応するエディタが見つかりません: id=%s", tab_id)
+            return
+
+        previous_state = editor.blockSignals(True)
+        editor.setPlainText(new_content)
+        editor.document().setModified(False)
+        editor.blockSignals(previous_state)
+
+        self._tab_state.mark_dirty(tab_id, False)
+
+        tab_index = self._tab_view.indexOf(editor)
+        if tab_index != -1:
+            self._tab_view.set_dirty(tab_index, False)
+
+        self._logger.info("外部編集をタブへ反映しました: %s", resolved)
 
     def close_current_tab(self) -> Optional[Path]:
         """現在アクティブなタブを閉じる。"""
@@ -192,3 +242,16 @@ class FileController:
         except KeyError as exc:
             self._logger.error("タブIDの特定に失敗しました。", exc_info=exc)
             raise KeyError("タブIDが関連付けられていません。") from exc
+
+    def _generate_untitled_path(self) -> Path:
+        """未保存ファイル用の一時パスを生成する。"""
+        name = f"untitled-{self._untitled_counter}.txt"
+        self._untitled_counter += 1
+        return Path(name)
+
+    def _find_editor_by_tab_id(self, tab_id: str) -> Optional[QPlainTextEdit]:
+        """タブIDに対応するエディタウィジェットを取得する。"""
+        for editor, current_id in self._tab_id_by_editor.items():
+            if current_id == tab_id:
+                return editor
+        return None

@@ -175,6 +175,8 @@ class FolderTree(QTreeWidget):
         create_file_action.setData("create_file")
         create_folder_action = menu.addAction("新規フォルダ")
         create_folder_action.setData("create_folder")
+        rename_action = menu.addAction("名前を変更")
+        rename_action.setData("rename")
         menu.addSeparator()
         delete_action = menu.addAction("削除")
         delete_action.setData("delete")
@@ -195,3 +197,93 @@ class FolderTree(QTreeWidget):
         handler = self._context_handler
         assert handler is not None
         handler(selected_key, target_path)
+
+    def rename_path(self, old_path: Path, new_path: Path) -> None:
+        """既存ノードのパスと表示名を更新する。"""
+        normalized_old = old_path.expanduser().resolve(strict=False)
+        item = self._path_item_map.get(normalized_old)
+        if item is None:
+            raise FileOperationError(f"リネーム対象がツリーに存在しません: {normalized_old}")
+
+        normalized_new = new_path.expanduser().resolve(strict=False)
+        display_name = normalized_new.name or str(normalized_new)
+        item.setText(0, display_name)
+        item.setData(0, Qt.ItemDataRole.UserRole, str(normalized_new))
+        self._path_item_map.pop(normalized_old, None)
+        self._path_item_map[normalized_new] = item
+
+        is_directory = bool(item.data(0, Qt.ItemDataRole.UserRole + 1))
+        if is_directory:
+            self._update_child_paths(item, normalized_old, normalized_new)
+
+        self._reinsert_sorted(item)
+
+    def _update_child_paths(self, item: QTreeWidgetItem, old_base: Path, new_base: Path) -> None:
+        """子要素のパス情報を再帰的に更新する。"""
+        for index in range(item.childCount()):
+            child = item.child(index)
+            data = child.data(0, Qt.ItemDataRole.UserRole)
+            if not isinstance(data, str):
+                continue
+
+            old_child_path = Path(data).expanduser().resolve(strict=False)
+            try:
+                relative = old_child_path.relative_to(old_base)
+            except ValueError:
+                continue
+
+            new_child_path = new_base / relative
+            child.setData(0, Qt.ItemDataRole.UserRole, str(new_child_path))
+            self._path_item_map.pop(old_child_path, None)
+            self._path_item_map[new_child_path] = child
+
+            if child.childCount() > 0:
+                self._update_child_paths(child, old_child_path, new_child_path)
+
+    def _reinsert_sorted(self, item: QTreeWidgetItem) -> None:
+        """リネーム後にノードをソート順へ差し戻す。"""
+        parent_item = cast(Optional[QTreeWidgetItem], item.parent())
+        if parent_item is None:
+            index = self.indexOfTopLevelItem(item)
+            if index >= 0:
+                taken = self.takeTopLevelItem(index)
+                if taken is not None:
+                    item = taken
+            self._insert_sorted(None, item)
+            return
+
+        index = parent_item.indexOfChild(item)
+        if index >= 0:
+            parent_item.takeChild(index)
+        self._insert_sorted(parent_item, item)
+
+    def _insert_sorted(self, parent_item: Optional[QTreeWidgetItem], item: QTreeWidgetItem) -> None:
+        """指定親ノードの子としてソート順を維持しつつ挿入する。"""
+        is_directory = bool(item.data(0, Qt.ItemDataRole.UserRole + 1))
+        key = self._sort_key(is_directory, item.text(0))
+
+        if parent_item is None:
+            insert_index = self.topLevelItemCount()
+            for current_index in range(self.topLevelItemCount()):
+                current_item = self.topLevelItem(current_index)
+                if current_item is None:
+                    continue
+                current_is_dir = bool(current_item.data(0, Qt.ItemDataRole.UserRole + 1))
+                current_key = self._sort_key(current_is_dir, current_item.text(0))
+                if key < current_key:
+                    insert_index = current_index
+                    break
+            self.insertTopLevelItem(insert_index, item)
+            return
+
+        insert_index = parent_item.childCount()
+        for current_index in range(parent_item.childCount()):
+            current_item = cast(Optional[QTreeWidgetItem], parent_item.child(current_index))
+            if current_item is None:
+                continue
+            current_is_dir = bool(current_item.data(0, Qt.ItemDataRole.UserRole + 1))
+            current_key = self._sort_key(current_is_dir, current_item.text(0))
+            if key < current_key:
+                insert_index = current_index
+                break
+        parent_item.insertChild(insert_index, item)

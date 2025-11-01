@@ -4,6 +4,7 @@ import logging
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 
 @dataclass
@@ -62,6 +63,14 @@ class TabState:
         resolved = new_path.expanduser().resolve(strict=False)
         entry.file_path = resolved
         self._logger.info("タブのパスを更新しました: id=%s path=%s", tab_id, resolved)
+
+    def find_tab_id_by_path(self, path: Path) -> Optional[str]:
+        """ファイルパスに一致するタブIDを検索する。"""
+        resolved = path.expanduser().resolve(strict=False)
+        for tab_id, entry in self._tabs.items():
+            if entry.file_path == resolved:
+                return tab_id
+        return None
 
     def _get_entry(self, tab_id: str) -> TabEntry:
         """内部で利用するタブ情報取得ヘルパー。"""

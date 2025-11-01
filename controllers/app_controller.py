@@ -1,22 +1,25 @@
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Iterable, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QFileDialog
 
+from controllers.ai_controller import AIController
 from controllers.event_bus import EventBus, Payload
 from controllers.file_controller import FileController
 from controllers.folder_controller import FolderController
+from controllers.settings_controller import SettingsController
 from controllers.tab_controller import TabController
 from models.file_model import FileModel
 from models.folder_model import FolderModel
 from models.tab_model import TabState
 from views.folder_tree import FolderTree
 from views.main_window import MainWindow
-from exceptions import FileOperationError
+from exceptions import FileOperationError, AIIntegrationError
 
 
 class AppController:
@@ -36,7 +39,9 @@ class AppController:
         window_factory: Optional[Callable[[], MainWindow]] = None,
         file_controller: Optional[FileController] = None,
         folder_controller: Optional[FolderController] = None,
+        settings_controller: Optional[SettingsController] = None,
         tab_controller: Optional[TabController] = None,
+        ai_controller: Optional[AIController] = None,
     ) -> None:
         """依存オブジェクトを受け取り初期化する。
 
@@ -57,8 +62,11 @@ class AppController:
         self._window: Optional[MainWindow] = None
         self._file_controller = file_controller
         self._folder_controller = folder_controller
+        self._settings_controller = settings_controller
         self._tab_controller = tab_controller
+        self._ai_controller = ai_controller
         self._tab_state: Optional[TabState] = None
+        self._pending_chat_attachments: list[tuple[Path, str]] = []
 
         # メインウィンドウを構築する。
         self._initialize_window()
@@ -107,9 +115,26 @@ class AppController:
                 logger=self._logger.getChild("folder_controller"),
             )
 
+        if self._settings_controller is None:
+            self._settings_controller = SettingsController(
+                logger=self._logger.getChild("settings_controller")
+            )
+
+        settings_model = getattr(self._settings_controller, "model", None)
+
+        if self._ai_controller is None:
+            self._ai_controller = AIController(
+                logger=self._logger.getChild("ai_controller"),
+                settings_model=settings_model,
+            )
+
         open_action = getattr(self._window, "action_open_file", None)
         if open_action is not None:
             open_action.triggered.connect(self._handle_open_file_action)
+
+        new_action = getattr(self._window, "action_new_file", None)
+        if new_action is not None:
+            new_action.triggered.connect(self._handle_new_file_action)
 
         open_folder_action = getattr(self._window, "action_open_folder", None)
         if open_folder_action is not None:
@@ -122,6 +147,22 @@ class AppController:
         close_action = getattr(self._window, "action_close_tab", None)
         if close_action is not None:
             close_action.triggered.connect(self._handle_close_tab_action)
+
+        settings_action = getattr(self._window, "action_open_settings", None)
+        if settings_action is not None:
+            settings_action.triggered.connect(self._handle_open_settings_action)
+
+        chat_signal = getattr(self._window, "chat_submitted", None)
+        if chat_signal is not None:
+            chat_signal.connect(self._handle_chat_submitted)
+
+        edit_signal = getattr(self._window, "chat_edit_requested", None)
+        if edit_signal is not None:
+            edit_signal.connect(self._handle_chat_edit_requested)
+
+        attach_signal = getattr(self._window, "chat_attachment_requested", None)
+        if attach_signal is not None:
+            attach_signal.connect(self._handle_chat_attachment_request)
 
     def _wire_events(self) -> None:
         """ビューシグナルとイベントバスの結線、およびハンドラ購読を設定する。"""
@@ -208,6 +249,17 @@ class AppController:
         except Exception:  # noqa: BLE001
             self._logger.exception("ファイルを開く処理中に例外が発生しました。")
 
+    def _handle_new_file_action(self) -> None:
+        """新規ファイル作成アクションを処理する。"""
+        if self._file_controller is None:
+            self._logger.warning("ファイルコントローラが未設定のため新規作成を処理できません。")
+            return
+
+        try:
+            self._file_controller.create_new_file()
+        except Exception:  # noqa: BLE001
+            self._logger.exception("新規ファイル作成中に例外が発生しました。")
+
     def _handle_open_folder_action(self) -> None:
         """フォルダを開くアクションを処理する。"""
         if self._folder_controller is None:
@@ -242,6 +294,225 @@ class AppController:
             self._logger.debug("タブを閉じる対象が存在しませんでした。")
         else:
             self._logger.info("タブを閉じました: %s", closed_path)
+
+    def _handle_open_settings_action(self) -> None:
+        """設定ダイアログを開くアクションを処理する。"""
+        if self._settings_controller is None:
+            self._logger.warning("設定コントローラが未設定のためダイアログを開けません。")
+            return
+
+        if self._window is None:
+            self._logger.warning("ウィンドウが初期化されていないため設定を開けません。")
+            return
+
+        try:
+            accepted = self._settings_controller.open_dialog(parent=self._window)
+        except Exception:  # noqa: BLE001
+            self._logger.exception("設定ダイアログの表示中に例外が発生しました。")
+            return
+
+        if accepted:
+            self._logger.info("設定ダイアログで変更が保存されました。")
+            if self._ai_controller is not None:
+                self._ai_controller.reset_client()
+        else:
+            self._logger.debug("設定ダイアログはキャンセルされました。")
+
+    def _handle_chat_submitted(self, message: str) -> None:
+        """チャット入力をAIコントローラへ委譲する。"""
+        trimmed = message.strip()
+
+        if not trimmed:
+            if self._window is not None:
+                self._window.show_chat_error("メッセージを入力してください。")
+            return
+
+        if self._ai_controller is None:
+            self._logger.warning("AIコントローラが未設定のためチャットを処理できません。")
+            if self._window is not None:
+                self._window.show_chat_error("AI機能が利用できません。")
+            return
+
+        prompt = self._compose_chat_prompt(trimmed, self._pending_chat_attachments)
+
+        try:
+            response = self._ai_controller.handle_chat_submit(prompt)
+        except AIIntegrationError as exc:
+            self._logger.error("AI応答の取得に失敗しました。", exc_info=exc)
+            if self._window is not None:
+                self._window.show_chat_error(str(exc))
+            return
+        except Exception:  # noqa: BLE001
+            self._logger.exception("チャット処理中に予期せぬ例外が発生しました。")
+            if self._window is not None:
+                self._window.show_chat_error("AI応答の取得中にエラーが発生しました。")
+            return
+
+        self._pending_chat_attachments.clear()
+        if self._window is not None:
+            self._window.chat_panel.set_attachments([])
+        if self._window is not None:
+            self._window.show_chat_response(response)
+
+    def _handle_chat_edit_requested(self, instruction: str) -> None:
+        """AIを利用したファイル編集リクエストを処理する。"""
+        trimmed = instruction.strip()
+
+        if not trimmed:
+            if self._window is not None:
+                self._window.show_chat_error("メッセージを入力してください。")
+            return
+
+        if self._ai_controller is None:
+            self._logger.warning("AIコントローラが未設定のため編集を処理できません。")
+            if self._window is not None:
+                self._window.chat_panel.set_input_text(trimmed)
+                self._window.show_chat_error("AI機能が利用できません。")
+            return
+
+        if self._file_controller is None:
+            self._logger.warning("ファイルコントローラが未設定のため編集結果を適用できません。")
+            if self._window is not None:
+                self._window.chat_panel.set_input_text(trimmed)
+                self._window.show_chat_error("ファイル編集機能が利用できません。")
+            return
+
+        attachments = list(self._pending_chat_attachments)
+        if not attachments:
+            if self._window is not None:
+                self._window.chat_panel.set_input_text(trimmed)
+                self._window.show_chat_error("編集するファイルを添付してください。")
+            return
+
+        if len(attachments) != 1:
+            if self._window is not None:
+                self._window.chat_panel.set_input_text(trimmed)
+                self._window.show_chat_error("編集には1件のファイルのみ添付してください。")
+            return
+
+        target_path, _original_content = attachments[0]
+        augmented_instruction = f"{trimmed}\nソースコードはコードブロックで出力してください。"
+        prompt = self._compose_chat_prompt(augmented_instruction, attachments)
+
+        try:
+            new_content = self._ai_controller.handle_chat_submit(prompt)
+        except AIIntegrationError as exc:
+            self._logger.error("AI編集の取得に失敗しました。", exc_info=exc)
+            if self._window is not None:
+                self._window.chat_panel.set_input_text(trimmed)
+                self._window.show_chat_error(str(exc))
+            return
+        except Exception:  # noqa: BLE001
+            self._logger.exception("AI編集処理中に予期せぬ例外が発生しました。")
+            if self._window is not None:
+                self._window.chat_panel.set_input_text(trimmed)
+                self._window.show_chat_error("AI応答の取得中にエラーが発生しました。")
+            return
+
+        extracted_content = self._extract_code_block(new_content)
+        if extracted_content is not None:
+            self._logger.info("AI応答からコードブロックを抽出しました。")
+            new_content = extracted_content
+        else:
+            self._logger.info("AI応答にコードブロックが見つからなかったため全文を適用します。")
+
+        try:
+            self._file_controller.apply_external_edit(target_path, new_content)
+        except FileOperationError as exc:
+            self._logger.error("AI編集結果の適用に失敗しました: %s", target_path, exc_info=exc)
+            if self._window is not None:
+                self._window.chat_panel.set_input_text(trimmed)
+                self._window.show_chat_error(str(exc))
+            return
+        except Exception:  # noqa: BLE001
+            self._logger.exception("AI編集結果の適用中に予期せぬ例外が発生しました。")
+            if self._window is not None:
+                self._window.chat_panel.set_input_text(trimmed)
+                self._window.show_chat_error("ファイルの更新中にエラーが発生しました。")
+            return
+
+        self._pending_chat_attachments.clear()
+        if self._window is not None:
+            self._window.chat_panel.set_attachments([])
+            self._window.chat_panel.append_ai_message(f"AI: {target_path.name} を編集しました。")
+            self._window.statusBar().showMessage(f"AI編集: {target_path.name} を更新しました。", 5000)
+
+        self._logger.info("AI編集をファイルへ適用しました: %s", target_path)
+
+    def _handle_chat_attachment_request(self) -> None:
+        """チャットへのファイル添付リクエストを処理する。"""
+        if self._ai_controller is None:
+            self._logger.warning("AIコントローラが未設定のため添付を処理できません。")
+            if self._window is not None:
+                self._window.show_chat_error("AI機能が利用できません。")
+            return
+
+        selected = self._prompt_file_to_open()
+        if selected is None:
+            self._logger.debug("チャット添付用のファイル選択がキャンセルされました。")
+            if self._window is not None:
+                self._window.statusBar().showMessage("チャット: ファイル選択をキャンセルしました。", 3000)
+            return
+
+        normalized = selected.expanduser().resolve(strict=False)
+
+        try:
+            content = self._read_text_for_chat(normalized)
+        except FileOperationError as exc:
+            self._logger.error("チャット添付ファイルの読み込みに失敗しました: %s", normalized, exc_info=exc)
+            if self._window is not None:
+                self._window.show_chat_error(str(exc))
+            return
+
+        self._pending_chat_attachments.append((normalized, content))
+        if self._window is not None:
+            self._window.chat_panel.set_attachments(path for path, _ in self._pending_chat_attachments)
+            self._window.statusBar().showMessage(
+                f"チャット: '{normalized.name}' を添付しました。",
+                3000,
+            )
+
+    def _read_text_for_chat(self, path: Path) -> str:
+        """チャット添付用にテキストファイルを読み込む。"""
+        candidates = ["utf-8", "utf-8-sig", "utf-16", "utf-16-le", "utf-16-be", "cp932"]
+
+        for encoding in candidates:
+            try:
+                return path.read_text(encoding=encoding)
+            except UnicodeDecodeError as exc:
+                self._logger.debug(
+                    "チャット添付ファイルのデコードに失敗しました: path=%s encoding=%s",
+                    path,
+                    encoding,
+                    exc_info=exc,
+                )
+                continue
+            except OSError as exc:
+                self._logger.error("チャット添付ファイルの読み込みに失敗しました: %s", path, exc_info=exc)
+                raise FileOperationError(f"ファイルの読み込みに失敗しました: {path}") from exc
+
+        self._logger.error("チャット添付ファイルの読み込みで利用可能なエンコーディングが見つかりません: %s", path)
+        raise FileOperationError(f"ファイルの読み込みに失敗しました: {path}")
+
+    def _compose_chat_prompt(self, message: str, attachments: Iterable[tuple[Path, str]]) -> str:
+        """メッセージと添付ファイル内容をまとめたプロンプトを生成する。"""
+        segments = [message]
+
+        for path, content in attachments:
+            display_path = str(path)
+            divider = f"----- ファイル開始 ({path.name}) -----"
+            footer = f"----- ファイル終了 ({path.name}) -----"
+            segments.append(f"以下はファイル {display_path} の内容です。\n{divider}\n{content}\n{footer}")
+
+        return "\n\n".join(segments)
+
+    def _extract_code_block(self, text: str) -> Optional[str]:
+        """AI応答から最初のコードブロックを抽出する。"""
+        pattern = re.compile(r"```(?:[\w.+-]+)?\n(.*?)```", re.DOTALL)
+        match = pattern.search(text)
+        if match is None:
+            return None
+        return match.group(1).strip()
 
     def _prompt_file_to_open(self) -> Optional[Path]:
         """ファイルを開く際の選択ダイアログを表示する。"""
@@ -338,6 +609,16 @@ class AppController:
         return self._folder_controller
 
     @property
+    def settings_controller(self) -> Optional[SettingsController]:
+        """現在の設定コントローラを返す。"""
+        return self._settings_controller
+
+    @property
     def tab_controller(self) -> Optional[TabController]:
         """現在のタブコントローラを返す。"""
         return self._tab_controller
+
+    @property
+    def ai_controller(self) -> Optional[AIController]:
+        """現在のAIコントローラを返す。"""
+        return self._ai_controller
