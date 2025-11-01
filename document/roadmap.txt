@@ -108,7 +108,7 @@
 	- 関数: `install_exception_hook()`
 	- ログ出力とユーザ通知
 	- テスト: `tests/test_main.py::test_exception_hook_logs`
-27. 操作ログ (`logging/handlers.py`)
+27. [済] 操作ログ (`app_logging/handlers.py`)
 	- 関数: `attach_gui_handler(window)`, `log_user_action(action: str, detail: dict)`
 	- テスト: `tests/logging/test_handlers.py::test_log_user_action`
 
